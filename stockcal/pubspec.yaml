@@ -1,0 +1,54 @@
+name: stockcal
+description: 炒股日历 - 实时追踪关注公司的财报和重大事件
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  provider: ^6.1.1
+  table_calendar: ^3.0.9
+  intl: ^0.19.0
+  shared_preferences: ^2.2.2
+
+  # 网络
+  dio: ^5.4.0
+
+  # 本地存储
+  drift: ^2.15.0
+  sqlite3_flutter_libs: ^0.5.0
+
+  # 后台 & 通知
+  flutter_local_notifications: ^17.0.0
+  workmanager: ^0.5.2
+
+  # 文件处理
+  file_picker: ^6.2.0
+  csv: ^6.0.0
+  excel: ^4.0.0
+
+  # 社区后端 (Phase 5 启用)
+  # cloud_firestore: ^4.15.0
+  # firebase_auth: ^4.17.0
+  # firebase_storage: ^11.2.0
+
+  # 小组件 (Phase 7 启用)
+  # home_widget: ^0.6.0
+
+  # UI
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  drift_dev: ^2.15.0
+  build_runner: ^2.4.8
+
+flutter:
+  uses-material-design: true

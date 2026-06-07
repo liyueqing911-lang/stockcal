@@ -1,0 +1,23 @@
+{
+  "envId": "{{envId}}",
+  "version": "2.0",
+  "framework": {
+    "name": "stockcal",
+    "plugins": {
+      "client": {
+        "use": "@cloudbase/framework-plugin-website",
+        "inputs": {
+          "outputPath": "./",
+          "ignore": [
+            ".git", ".gitignore", ".claude", ".DS_Store",
+            "node_modules", "server", "stockcal",
+            "package.json", "package-lock.json",
+            "cloudbaserc.json", "vercel.json"
+          ],
+          "cloudPath": "/",
+          "envVariables": {}
+        }
+      }
+    }
+  }
+}

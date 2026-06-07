@@ -1821,9 +1821,20 @@ async function checkServer() {
     return false;
   }
 
-  // Vercel / 生产环境 → 相对路径
-  API_BASE = '';
-  console.log('🌐 Vercel 部署模式，使用相对路径 API');
+  // CloudBase / Vercel 等生产环境
+  // 若用户配置了 CloudBase 环境 ID，使用云函数 HTTP 触发器
+  const cbEnv = localStorage.getItem('stockcal-cb-env') || '';
+  if (cbEnv && (location.hostname.includes('tcloudbaseapp.com') || location.hostname.includes('cloudbase.net'))) {
+    API_BASE = `https://${cbEnv}.service.tcloudbase.com`;
+    console.log('🌐 CloudBase 部署模式，使用云函数 API');
+  } else if (location.hostname.includes('vercel.app')) {
+    API_BASE = '';
+    console.log('🌐 Vercel 部署模式，使用相对路径 API');
+  } else {
+    // 其他生产环境（如自建 CDN）→ 使用 Vercel 作为 API 后端
+    API_BASE = 'https://stockcal-eight.vercel.app';
+    console.log('🌐 外部部署，API 路由到 Vercel');
+  }
   return true;
 }
 
