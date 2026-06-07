@@ -32,8 +32,6 @@ export default async function handler(req, res) {
       res.setHeader('Cache-Control', 'no-cache, no-store, max-age=0');
     }
 
-    // 通过响应头透传诊断信息，body 保持数组格式兼容前端
-    res.setHeader('X-Diagnostics', JSON.stringify(diagnostics).slice(0, 500));
     return res.json(rows);
   } catch (err) {
     console.error('Eastmoney earnings:', err.message);
