@@ -1636,7 +1636,7 @@ async function fetchAllSources({ silent, errors } = {}) {
   let sources = [];
 
   // ── Tushare: A股财报披露（主源） ──
-  const cnCacheKey = 'tushare_earnings_' + fromStr + '_' + toStr;
+  const cnCacheKey = 'em_earnings_' + fromStr + '_' + toStr;
   let cnData = getCache(cnCacheKey);
   if (!cnData) {
     try {
@@ -1663,7 +1663,7 @@ async function fetchAllSources({ silent, errors } = {}) {
   }
 
   // ── Tushare: 业绩预告 ──
-  const fcKey = 'tushare_forecast_' + fromStr;
+  const fcKey = 'em_forecast_' + fromStr;
   let fcData = getCache(fcKey);
   if (!fcData) {
     try {
@@ -1682,7 +1682,7 @@ async function fetchAllSources({ silent, errors } = {}) {
   }
 
   // ── Finnhub: 美股财报（辅源） ──
-  const usCacheKey = 'finnhub_us_' + fromStr + '_' + toStr;
+  const usCacheKey = 'fh_us_' + fromStr + '_' + toStr;
   let usData = getCache(usCacheKey);
   if (!usData) {
     try {
