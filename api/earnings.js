@@ -49,11 +49,11 @@ async function fetchEastmoney(from, to, diag) {
       const filter = `(NOTICE_DATE>='${from}')(NOTICE_DATE<='${to}')`;
       const url = `${EM_BASE}?reportName=RPT_LICO_FN_CPD&columns=SECURITY_CODE,SECURITY_NAME_ABBR,NOTICE_DATE,REPORTDATE,DATATYPE,BASIC_EPS,PARENT_NETPROFIT,REPORTTYPE&pageNumber=${page}&pageSize=500&sortColumns=NOTICE_DATE&sortTypes=1&source=WEB&client=WEB&filter=${encodeURIComponent(filter)}`;
       const resp = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } });
-      if (!resp.ok) { diag.push({ source: 'eastmoney', status: resp.status, page }); break; }
+      if (!resp.ok) { diag.attempts.push({ source: 'eastmoney', status: resp.status, page }); break; }
       const body = await resp.json();
-      if (!body.success) { diag.push({ source: 'eastmoney', code: body.code, msg: body.message, page }); break; }
+      if (!body.success) { diag.attempts.push({ source: 'eastmoney', code: body.code, msg: body.message, page }); break; }
       const data = body.result?.data || [];
-      if (!data.length) { diag.push({ source: 'eastmoney', status: 'empty', page }); break; }
+      if (!data.length) { diag.attempts.push({ source: 'eastmoney', status: 'empty', page }); break; }
       allRows.push(...data.map(r => ({
         symbol: r.SECURITY_CODE,
         name: r.SECURITY_NAME_ABBR,
@@ -66,8 +66,8 @@ async function fetchEastmoney(from, to, diag) {
       if (data.length < 500) break;
       page++;
     }
-  } catch (e) { diag.push({ source: 'eastmoney', error: e.message }); }
-  if (allRows.length) diag.push({ source: 'eastmoney', total: allRows.length });
+  } catch (e) { diag.attempts.push({ source: 'eastmoney', error: e.message }); }
+  if (allRows.length) diag.attempts.push({ source: 'eastmoney', total: allRows.length });
   return allRows;
 }
 
@@ -76,11 +76,11 @@ async function fetchEastmoneyForecast(from, to, diag) {
     const filter = `(NOTICE_DATE>='${from}')(NOTICE_DATE<='${to}')`;
     const url = `${EM_BASE}?reportName=RPT_PUBLIC_OP_NEWPREDICT&columns=SECURITY_CODE,SECURITY_NAME_ABBR,NOTICE_DATE,PREDICT_TYPE,PREDICT_AMT_LOWER,PREDICT_AMT_UPPER,ADD_AMP_LOWER,ADD_AMP_UPPER,PREDICT_CONTENT&pageNumber=1&pageSize=500&sortColumns=NOTICE_DATE&sortTypes=1&source=WEB&client=WEB&filter=${encodeURIComponent(filter)}`;
     const resp = await fetch(url, { headers: { 'User-Agent': UA, 'Accept': 'application/json' } });
-    if (!resp.ok) { diag.push({ source: 'forecast', status: resp.status }); return []; }
+    if (!resp.ok) { diag.attempts.push({ source: 'forecast', status: resp.status }); return []; }
     const body = await resp.json();
-    if (!body.success) { diag.push({ source: 'forecast', code: body.code }); return []; }
+    if (!body.success) { diag.attempts.push({ source: 'forecast', code: body.code }); return []; }
     const data = body.result?.data || [];
-    diag.push({ source: 'forecast', total: data.length });
+    diag.attempts.push({ source: 'forecast', total: data.length });
     return data.map(r => ({
       symbol: r.SECURITY_CODE,
       name: r.SECURITY_NAME_ABBR,
@@ -89,7 +89,7 @@ async function fetchEastmoneyForecast(from, to, diag) {
       predict_type: r.PREDICT_TYPE,
       eps: null,
     }));
-  } catch (e) { diag.push({ source: 'forecast', error: e.message }); return []; }
+  } catch (e) { diag.attempts.push({ source: 'forecast', error: e.message }); return []; }
 }
 
 function fmtDate(d) {
