@@ -1786,89 +1786,39 @@ async function autoFetchIfKey() {
   }
 }
 
-// ═══════════════════ 纯静态：直连东方财富 + Finnhub API ═══════════════════
-// 无需任何后端服务器，可直接部署到 GitHub Pages / OSS / CDN
-const EM_BASE = 'https://datacenter.eastmoney.com/securities/api/data/v1/get';
-const FH_BASE = 'https://finnhub.io/api/v1';
-const UA = 'Mozilla/5.0 (compatible; StockCal/3.0)';
+// ═══════════════════ API 代理：CloudBase 云函数（解决 CORS 跨域） ═══════════════════
+const API_BASE = 'https://stockcal-d4g21ipft1f36333c.service.tcloudbase.com/api';
 
-// Finnhub Key 从 localStorage 读取（首次使用弹窗提示输入，不留存源码）
+// Finnhub Key 从 localStorage 读取（首次使用弹窗提示输入）
 function getFHKey() {
   return localStorage.getItem('stockcal-fh-key') || '';
 }
 
-// ── A股: 东方财富财报（直连，无需服务器） ──
+// ── A股: 东方财富财报 ──
 async function fetchCnEarnings(from, to) {
-  // 先拉主报表
-  let rows = await fetchEastmoneyMain(from, to);
-  // 空则兜底业绩预告
-  if (!rows.length) rows = await fetchEastmoneyForecast(from, to);
-  return rows;
-}
-
-async function fetchEastmoneyMain(from, to) {
-  const allRows = [];
-  let page = 1;
-  while (page <= 3) {
-    const filter = `(NOTICE_DATE>='${from}')(NOTICE_DATE<='${to}')`;
-    const url = `${EM_BASE}?reportName=RPT_LICO_FN_CPD&columns=SECURITY_CODE,SECURITY_NAME_ABBR,NOTICE_DATE,REPORTDATE,DATATYPE,BASIC_EPS,PARENT_NETPROFIT&pageNumber=${page}&pageSize=500&sortColumns=NOTICE_DATE&sortTypes=1&source=WEB&client=WEB&filter=${encodeURIComponent(filter)}`;
-    try {
-      const resp = await fetch(url, { headers: { 'User-Agent': UA } });
-      if (!resp.ok) break;
-      const body = await resp.json();
-      if (!body.success) break;
-      const data = body.result?.data || [];
-      if (!data.length) break;
-      allRows.push(...data.map(r => ({
-        symbol: r.SECURITY_CODE, name: r.SECURITY_NAME_ABBR,
-        notice_date: r.NOTICE_DATE?.slice(0,10), report_date: r.REPORTDATE?.slice(0,10),
-        period: r.DATATYPE, eps: r.BASIC_EPS, net_profit: r.PARENT_NETPROFIT,
-      })));
-      if (data.length < 500) break;
-      page++;
-    } catch (_) { break; }
-  }
-  return allRows;
-}
-
-async function fetchEastmoneyForecast(from, to) {
-  const filter = `(NOTICE_DATE>='${from}')(NOTICE_DATE<='${to}')`;
-  const url = `${EM_BASE}?reportName=RPT_PUBLIC_OP_NEWPREDICT&columns=SECURITY_CODE,SECURITY_NAME_ABBR,NOTICE_DATE,PREDICT_TYPE,PREDICT_AMT_LOWER,PREDICT_AMT_UPPER,ADD_AMP_LOWER,ADD_AMP_UPPER&pageNumber=1&pageSize=500&sortColumns=NOTICE_DATE&sortTypes=1&source=WEB&client=WEB&filter=${encodeURIComponent(filter)}`;
   try {
-    const resp = await fetch(url, { headers: { 'User-Agent': UA } });
-    if (!resp.ok) return [];
-    const body = await resp.json();
-    if (!body.success) return [];
-    return (body.result?.data || []).map(r => ({
-      symbol: r.SECURITY_CODE, name: r.SECURITY_NAME_ABBR,
-      notice_date: r.NOTICE_DATE?.slice(0,10), period: '业绩预告', eps: null,
-    }));
-  } catch (_) { return []; }
+    const resp = await fetch(`${API_BASE}?action=earnings&from=${from}&to=${to}`);
+    if (!resp.ok) throw new Error('API ' + resp.status);
+    return resp.json();
+  } catch (e) { console.warn('A股财报:', e.message); return []; }
 }
 
-// ── A股: 东方财富业绩预告（独立接口） ──
+// ── A股: 东方财富业绩预告 ──
 async function fetchCnForecast(from, to) {
-  return fetchEastmoneyForecast(from, to);
+  try {
+    const resp = await fetch(`${API_BASE}?action=forecast&from=${from}&to=${to}`);
+    if (resp.ok) return resp.json();
+  } catch (_) {}
+  return [];
 }
 
-// ── 美股: Finnhub（直连，无需服务器） ──
+// ── 美股: Finnhub ──
 async function fetchUsEarnings(from, to) {
-  if (!FH_KEY) return [];
-  const allRows = [];
   try {
-    const url = `${FH_BASE}/calendar/earnings?from=${from}&to=${to}&token=${getFHKey()}`;
-    const resp = await fetch(url);
-    if (!resp.ok) return [];
-    const body = await resp.json();
-    const raw = body.earningsCalendar || [];
-    // 去重
-    const seen = new Set();
-    for (const r of raw) {
-      const k = r.symbol + '|' + r.date;
-      if (!seen.has(k)) { seen.add(k); allRows.push(r); }
-    }
-  } catch (_) {}
-  return allRows;
+    const resp = await fetch(`${API_BASE}?action=us&from=${from}&to=${to}`);
+    if (!resp.ok) throw new Error('API ' + resp.status);
+    return resp.json();
+  } catch (e) { console.warn('美股财报:', e.message); return []; }
 }
 
   // ── 东方财富 → 事件（A股财报，自带中文名） ──
