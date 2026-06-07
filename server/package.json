@@ -1,0 +1,17 @@
+{
+  "name": "stockcal-server",
+  "version": "1.0.0",
+  "description": "StockCal 后端缓存服务 — 统一代理 Alpha Vantage / FMP API，全用户共享缓存",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

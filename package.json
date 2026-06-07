@@ -1,0 +1,9 @@
+{
+  "name": "stockcal",
+  "version": "3.0.0",
+  "description": "StockCal 炒股日历 — A股+美股财报日历",
+  "scripts": {
+    "dev": "cd server && npm start"
+  },
+  "engines": { "node": ">=18.0.0" }
+}

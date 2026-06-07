@@ -1,0 +1,2268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>StockCal - 炒股日历</title>
+<style>
+:root {
+  --bg:            #E5DDD5;
+  --bg-secondary:  #EDE7E0;
+  --card:          #F9F6F2;
+  --card-hover:    #F0EBE4;
+  --text:          #3E3A37;
+  --text-secondary:#9B9590;
+  --text-muted:    #BFB9B3;
+  --border:        #D9D2CA;
+  /* 6色事件体系 */
+  --clr-earnings:  #C97B6A; --clr-earnings-bg:  #F5E8E4;
+  --clr-product:   #D4946E; --clr-product-bg:   #F6ECE2;
+  --clr-shareholder:#7B95A8;--clr-shareholder-bg:#E4EBF0;
+  --clr-dividend:  #8AA88B; --clr-dividend-bg:  #E6EEE6;
+  --clr-ipo:       #9B8DB5; --clr-ipo-bg:       #EFEBF3;
+  --clr-investor:  #B5B0A8; --clr-investor-bg:  #EFEDEA;
+  --clr-past:      #B5B0A8; --clr-past-bg:      #E8E5E2;
+  --accent:        #C97B6A;
+  --radius: 14px;
+}
+/* 暗黑模式 */
+body.dark {
+  --bg:            #1C1B1A;
+  --bg-secondary:  #262422;
+  --card:          #2E2C2A;
+  --card-hover:    #383634;
+  --text:          #E8E4DF;
+  --text-secondary:#9F9A94;
+  --text-muted:    #6B6662;
+  --border:        #3E3A37;
+  --clr-earnings-bg:#3D2824;--clr-product-bg:#3D2F25;--clr-shareholder-bg:#29323A;
+  --clr-dividend-bg:#2A332A;--clr-ipo-bg:#302C38;--clr-investor-bg:#363330;
+  --clr-past-bg:   #2A2826;
+  --accent:        #D48473;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'PingFang SC', sans-serif;
+  background: #D5CFC7;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  transition: background .3s;
+}
+body.dark { background: #141312; }
+
+/* ── 响应式容器 ── */
+.app-shell {
+  width: 100%; height: 100vh; height: 100dvh;
+  max-width: 430px;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: background .3s;
+}
+/* 桌面端加手机框 */
+@media (min-width: 500px) {
+  body { padding: 20px; }
+  .app-shell {
+    height: min(900px, 95vh); height: min(900px, 95dvh);
+    border-radius: 36px;
+    box-shadow: 0 0 0 6px #1C1C1E, 0 0 0 8px #2C2C2E, 0 16px 48px rgba(0,0,0,.4);
+  }
+  body.dark .app-shell { box-shadow: 0 0 0 6px #2C2C2E,0 0 0 8px #3C3C3E,0 16px 48px rgba(0,0,0,.6); }
+}
+
+/* ── 状态栏 ── */
+.status-bar {
+  height: 40px; padding: 10px 24px 0;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 13px; font-weight: 600; color: var(--text); flex-shrink: 0;
+}
+
+/* ── 页面容器 ── */
+.page { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.page.active { display: flex; }
+
+/* ── 导航栏 ── */
+.nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 16px 8px; flex-shrink: 0;
+}
+.nav-title { font-size: 24px; font-weight: 700; color: var(--text); letter-spacing: -.5px; }
+.nav-month { font-size: 16px; font-weight: 600; color: var(--text); min-width: 70px; text-align: center; }
+.nav-btn {
+  width: 30px; height: 30px; border-radius: 15px; border: none;
+  background: var(--card); cursor: pointer; font-size: 13px; color: var(--text);
+  display: flex; align-items: center; justify-content: center; transition: all .15s;
+}
+.nav-btn:active { background: var(--card-hover); transform: scale(.94); }
+
+/* ── 子Tab ── */
+.subtabs {
+  display: flex; gap: 6px; padding: 0 16px 4px; flex-shrink: 0;
+}
+.subtab {
+  padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none; color: var(--text-muted); background: var(--card);
+  transition: all .2s;
+}
+.subtab.active { background: var(--clr-earnings); color: #fff; }
+
+/* ── 周标题 ── */
+.weekday-row {
+  display: grid; grid-template-columns: repeat(7,1fr);
+  text-align: center; padding: 4px 10px; font-size: 11px;
+  font-weight: 600; color: var(--text-muted); letter-spacing: .5px;
+}
+
+/* ── 日历格子 ── */
+.calendar-grid {
+  display: grid; grid-template-columns: repeat(7,1fr);
+  padding: 0 10px; gap: 1px 0; flex-shrink: 0;
+}
+.day-cell {
+  aspect-ratio: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-start; padding-top: 1px;
+  cursor: pointer; border-radius: 12px; transition: background .15s;
+  font-size: 14px; color: var(--text); position: relative;
+}
+.day-cell:active { background: var(--card-hover); }
+.day-cell.other-month { color: var(--text-muted); opacity: .35; }
+.day-cell.today .day-num { background: var(--clr-earnings); color: #fff; font-weight: 700; }
+.day-cell.selected:not(.today) .day-num { background: var(--border); font-weight: 600; }
+.day-num {
+  width: 24px; height: 24px; display: flex; align-items: center;
+  justify-content: center; border-radius: 12px; font-size: 13px; font-weight: 450;
+}
+.day-dots {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0 2px;
+  margin-top: 0; max-width: 100%; min-height: 6px;
+}
+.day-dot {
+  width: 4px; height: 4px; border-radius: 2px; flex-shrink: 0;
+}
+.day-syms {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0 2px;
+  margin-top: 1px; max-width: 100%;
+}
+.day-sym {
+  font-size: 6px; font-weight: 600; color: var(--text-secondary);
+  line-height: 1.2; max-width: 32px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; text-align: center;
+}
+
+/* ── 今天按钮 ── */
+.today-bar { padding: 4px 16px; flex-shrink: 0; }
+.today-btn {
+  background: var(--card); border: none; color: var(--accent);
+  font-size: 12px; font-weight: 600; cursor: pointer; padding: 5px 12px; border-radius: 16px;
+}
+.today-btn.hidden { visibility: hidden; }
+
+/* ── 事件列表 ── */
+.event-area {
+  flex: 1; overflow-y: auto; margin: 2px 12px 0;
+  padding: 0 8px; border-top: 1px solid var(--border); padding-top: 8px;
+}
+.event-date-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+.ev-card {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--card); border-radius: var(--radius);
+  padding: 12px; margin-bottom: 6px; cursor: pointer; transition: all .15s;
+}
+.ev-card:active { transform: scale(.985); }
+.ev-dot { width: 8px; height: 8px; border-radius: 4px; flex-shrink: 0; }
+.ev-body { flex:1; min-width: 0; }
+.ev-symbol { font-size: 13px; font-weight: 700; color: var(--text); }
+.ev-title { font-size: 11px; color: var(--text-secondary); margin-top: 1px; }
+.ev-time { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+.ev-status { font-size: 11px; margin-left: 4px; }
+.ev-status.done { color: var(--clr-past); }
+.ev-card.past .ev-symbol, .ev-card.past .ev-title { color: var(--clr-past); }
+.ev-card.past .ev-symbol { text-decoration: line-through; }
+.ev-empty { text-align: center; padding: 32px 20px; color: var(--text-muted); font-size: 13px; }
+
+/* ── 自选股 ── */
+.wl-count { font-size: 12px; color: var(--text-secondary); padding: 0 20px 8px; }
+.wl-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--card); border-radius: var(--radius);
+  padding: 14px; margin: 0 14px 6px; cursor: pointer; transition: all .15s;
+}
+.wl-card:active { transform: scale(.985); }
+.wl-avatar {
+  width: 42px; height: 42px; border-radius: 21px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0;
+}
+.wl-info { flex: 1; }
+.wl-symbol { font-size: 15px; font-weight: 700; color: var(--text); }
+.wl-next { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.wl-badge {
+  font-size: 10px; color: var(--text-muted);
+  background: var(--bg-secondary); padding: 3px 8px; border-radius: 8px;
+}
+.wl-actions { display: flex; gap: 6px; padding: 0 14px 8px; }
+
+/* ── Feed ── */
+.feed-card {
+  background: var(--card); border-radius: var(--radius);
+  margin: 0 14px 8px; padding: 14px; cursor: pointer;
+}
+.feed-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.feed-avatar {
+  width: 32px; height: 32px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 11px;
+}
+.feed-name { font-size: 13px; font-weight: 700; color: var(--text); }
+.feed-time-ago { font-size: 10px; color: var(--text-muted); }
+.feed-tag {
+  display: inline-block; font-size: 10px; font-weight: 600;
+  padding: 2px 8px; border-radius: 6px; margin-bottom: 6px;
+}
+.feed-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.feed-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+/* ── Profile ── */
+.profile-card {
+  background: var(--card); border-radius: var(--radius);
+  margin: 0 14px; padding: 20px; text-align: center;
+}
+.profile-avatar {
+  width: 56px; height: 56px; border-radius: 28px;
+  background: var(--clr-earnings); color: #fff;
+  font-size: 22px; font-weight: 700; display: flex;
+  align-items: center; justify-content: center; margin: 0 auto 10px;
+}
+.profile-name { font-size: 18px; font-weight: 700; color: var(--text); }
+.profile-sub { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+.setting-group {
+  margin: 12px 14px; background: var(--card);
+  border-radius: var(--radius); overflow: hidden;
+}
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px; border-bottom: .5px solid var(--border);
+  cursor: pointer; font-size: 14px; color: var(--text);
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-val { color: var(--text-muted); font-size: 13px; }
+.toggle {
+  width: 44px; height: 26px; border-radius: 13px;
+  background: #D9D2CA; position: relative; cursor: pointer; transition: background .3s;
+}
+.toggle.on { background: var(--clr-shareholder); }
+.toggle::after {
+  content: ''; position: absolute; width: 22px; height: 22px;
+  border-radius: 11px; background: #fff; top: 2px; left: 2px;
+  transition: transform .3s; box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.toggle.on::after { transform: translateX(18px); }
+
+/* ── TabBar ── */
+.tab-bar {
+  display: flex; background: var(--card);
+  border-top: .5px solid var(--border);
+  padding: 5px 16px env(safe-area-inset-bottom, 16px);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 2px; cursor: pointer; color: var(--text-muted); transition: color .2s; padding: 3px 0;
+}
+.tab.active { color: var(--accent); }
+.tab-icon { font-size: 20px; line-height: 1; }
+.tab-label { font-size: 10px; font-weight: 600; }
+
+/* ── 搜索浮层 ── */
+.search-overlay {
+  position: absolute; inset: 0; background: var(--bg);
+  z-index: 150; display: none; flex-direction: column;
+}
+.search-overlay.show { display: flex; }
+.search-bar-row {
+  display: flex; align-items: center; gap: 8px; padding: 12px 14px 6px;
+}
+.search-input-wrap {
+  flex: 1; display: flex; align-items: center; gap: 6px;
+  background: var(--card); border-radius: 20px;
+  padding: 8px 14px; border: 1px solid var(--border);
+}
+.search-input-wrap input {
+  flex: 1; border: none; background: none;
+  font-size: 15px; color: var(--text); outline: none;
+}
+.search-input-wrap input::placeholder { color: var(--text-muted); }
+.search-cancel {
+  background: none; border: none;
+  color: var(--accent); font-size: 15px; font-weight: 500; cursor: pointer;
+}
+.search-hot { padding: 12px 18px; }
+.search-hot-label { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+.hot-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.hot-tag {
+  padding: 6px 12px; background: var(--card); border-radius: 16px;
+  font-size: 12px; font-weight: 600; color: var(--text);
+  cursor: pointer; border: 1px solid var(--border); transition: all .15s;
+}
+.hot-tag.following { background: var(--clr-shareholder); color: #fff; border-color: var(--clr-shareholder); }
+.stock-row {
+  display: flex; align-items: center; padding: 12px 18px; gap: 10px;
+  cursor: pointer; border-bottom: .5px solid var(--border);
+}
+.sr-avatar {
+  width: 34px; height: 34px; border-radius: 17px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 12px;
+}
+.sr-info { flex: 1; }
+.sr-symbol { font-size: 14px; font-weight: 700; color: var(--text); }
+.sr-name { font-size: 11px; color: var(--text-secondary); }
+.sr-btn {
+  width: 28px; height: 28px; border-radius: 14px; border: none;
+  font-size: 16px; cursor: pointer; font-weight: 700;
+  background: var(--clr-earnings); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.sr-btn.following { background: var(--clr-shareholder); }
+.sr-market { font-size: 10px; color: var(--text-muted); margin-left: 4px; }
+
+/* ── 事件详情弹层 ── */
+.sheet-mask {
+  position: absolute; inset: 0; background: rgba(0,0,0,.35);
+  z-index: 200; display: none;
+}
+.sheet-mask.show { display: block; }
+.sheet {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: var(--card); border-radius: 18px 18px 0 0;
+  z-index: 201; transform: translateY(100%);
+  transition: transform .35s cubic-bezier(.32,.72,0,1);
+  max-height: 55%; overflow-y: auto; padding: 0 18px 30px;
+}
+.sheet.show { transform: translateY(0); }
+.sheet-handle {
+  width: 28px; height: 3px; background: var(--border);
+  border-radius: 2px; margin: 10px auto 14px;
+}
+.s-type { font-size: 18px; font-weight: 700; color: var(--text); }
+.s-row { display: flex; align-items: flex-start; gap: 6px; margin-bottom: 6px; font-size: 13px; color: var(--text); }
+.s-extra {
+  background: var(--bg-secondary); border-radius: 10px;
+  padding: 12px; margin: 10px 0; font-size: 12px; color: var(--text); line-height: 1.8;
+}
+.s-btn {
+  display: block; width: 100%; padding: 12px;
+  border: none; border-radius: 20px; font-size: 14px;
+  font-weight: 600; cursor: pointer; margin-top: 6px; transition: all .15s;
+}
+.s-btn:active { transform: scale(.97); }
+.s-btn.primary { background: var(--clr-earnings); color: #fff; }
+.s-btn.ghost { background: var(--bg-secondary); color: var(--accent); }
+
+/* ── 财报季 ── */
+.season-header { text-align: center; padding: 12px 0; }
+.season-title { font-size: 18px; font-weight: 700; color: var(--text); }
+.season-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.heatmap-bar {
+  margin: 0 14px 16px; padding: 14px;
+  background: var(--card); border-radius: var(--radius);
+}
+.heat-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 5px;
+}
+.heat-label { width: 28px; font-size: 10px; color: var(--text-muted); font-weight: 600; }
+.heat-fill {
+  flex: 1; height: 18px; border-radius: 4px; transition: all .3s;
+  background: var(--bg-secondary); position: relative; overflow: hidden;
+}
+.heat-fill-inner {
+  height: 100%; border-radius: 4px; transition: width .5s;
+  background: var(--clr-earnings);
+}
+.heat-count { width: 32px; font-size: 10px; font-weight: 600; color: var(--text-muted); text-align: right; }
+
+/* ── 错误提示 Toast ── */
+.error-toast {
+  position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+  max-width: 380px; width: calc(100% - 32px);
+  background: #FFF0ED; color: #C9402A; border: 1px solid #F5C6BC;
+  border-radius: 12px; padding: 12px 16px; font-size: 12px; line-height: 1.6;
+  z-index: 999; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+  display: none; cursor: pointer;
+}
+.error-toast.show { display: block; animation: slideUp .3s ease; }
+.error-toast .err-title { font-weight: 700; margin-bottom: 2px; }
+.error-toast .err-detail { color: #8B4A3D; font-size: 11px; word-break: break-all; }
+@keyframes slideUp { from { transform: translateX(-50%) translateY(20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+body.dark .error-toast { background: #3D2018; color: #F5A08C; border-color: #5A3028; }
+body.dark .error-toast .err-detail { color: #C8826E; }
+
+/* ── 莫兰迪高级灰背景色系 ── */
+.bg-0 { --bg: #E5DDD5; --bg-secondary: #EDE7E0; --card: #F9F6F2; --card-hover: #F0EBE4; --border: #D9D2CA; }
+.bg-1 { --bg: #DDE0E4; --bg-secondary: #E4E7EB; --card: #F5F6F8; --card-hover: #EAECF0; --border: #D0D4DA; }
+.bg-2 { --bg: #E2DDD8; --bg-secondary: #EBE6E1; --card: #F8F5F2; --card-hover: #EFEAE5; --border: #D5CEC8; }
+.bg-3 { --bg: #EBE5DF; --bg-secondary: #F2EDE8; --card: #FDFAF7; --card-hover: #F5F0EB; --border: #DDD6CF; }
+.bg-4 { --bg: #DFE2DB; --bg-secondary: #E7EAE3; --card: #F6F8F4; --card-hover: #ECEFE9; --border: #D2D6CE; }
+.bg-5 { --bg: #E1DEE6; --bg-secondary: #E9E6EE; --card: #F7F5FA; --card-hover: #EDEAF2; --border: #D4D0DA; }
+.bg-6 { --bg: #E6DFE0; --bg-secondary: #EEE8E9; --card: #FAF6F7; --card-hover: #F2ECED; --border: #D9D2D3; }
+.bg-7 { --bg: #DEE1E6; --bg-secondary: #E6E9ED; --card: #F5F6F9; --card-hover: #EBEDF2; --border: #D1D5DB; }
+
+/* 暗黑模式下背景色微调 */
+body.dark.bg-0 { --bg: #1C1B1A; --bg-secondary: #262422; --card: #2E2C2A; --card-hover: #383634; --border: #3E3A37; }
+body.dark.bg-1 { --bg: #1A1C1E; --bg-secondary: #242628; --card: #2C2E30; --card-hover: #36383A; --border: #3C3E40; }
+body.dark.bg-2 { --bg: #1C1A18; --bg-secondary: #262420; --card: #2E2C28; --card-hover: #383630; --border: #3E3A34; }
+body.dark.bg-3 { --bg: #1E1C18; --bg-secondary: #282620; --card: #302E28; --card-hover: #3A3830; --border: #403C34; }
+body.dark.bg-4 { --bg: #181C18; --bg-secondary: #222620; --card: #2A2E28; --card-hover: #343830; --border: #3A3E36; }
+body.dark.bg-5 { --bg: #1C1A1E; --bg-secondary: #262228; --card: #2E2A30; --card-hover: #38323A; --border: #3E3840; }
+body.dark.bg-6 { --bg: #1E1A1A; --bg-secondary: #282222; --card: #302A2A; --card-hover: #3A3232; --border: #403838; }
+body.dark.bg-7 { --bg: #1A1C1E; --bg-secondary: #242628; --card: #2C2E30; --card-hover: #36383A; --border: #3C3E40; }
+
+/* ── 背景色选择器 ── */
+.bg-picker {
+  display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0;
+}
+.bg-swatch {
+  width: 32px; height: 32px; border-radius: 16px; cursor: pointer;
+  border: 2px solid transparent; transition: all .2s; position: relative;
+}
+.bg-swatch.active { border-color: var(--accent); }
+.bg-swatch.active::after {
+  content: '✓'; position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center; font-size: 14px;
+  font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.3);
+}
+
+/* ── 会员样式 ── */
+.membership-card {
+  margin: 12px 14px; background: linear-gradient(135deg, #C9A87C 0%, #D4AF8D 40%, #E8CDA0 70%, #C9A87C 100%);
+  border-radius: var(--radius); padding: 18px; color: #fff; position: relative; overflow: hidden;
+}
+.membership-card::before {
+  content: ''; position: absolute; top: -20px; right: -20px;
+  width: 80px; height: 80px; border-radius: 40px;
+  background: rgba(255,255,255,.1);
+}
+.membership-card.premium { background: linear-gradient(135deg, #8B7BA8 0%, #9B8DB5 40%, #B8A5D0 70%, #8B7BA8 100%); }
+.membership-badge {
+  display: inline-block; background: rgba(255,255,255,.25);
+  padding: 3px 10px; border-radius: 10px; font-size: 10px;
+  font-weight: 700; letter-spacing: 1px; margin-bottom: 6px;
+}
+.membership-title { font-size: 16px; font-weight: 700; }
+.membership-desc { font-size: 11px; opacity: .85; margin-top: 3px; }
+.membership-btn {
+  display: inline-block; margin-top: 10px; padding: 7px 18px;
+  background: #fff; color: #C9A87C; border: none; border-radius: 16px;
+  font-size: 12px; font-weight: 700; cursor: pointer; transition: all .15s;
+}
+.membership-btn:active { transform: scale(.95); }
+.membership-card.premium .membership-btn { color: #8B7BA8; }
+
+/* ── 升级弹层 ── */
+.upgrade-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,.5);
+  z-index: 250; display: none; align-items: center; justify-content: center;
+}
+.upgrade-overlay.show { display: flex; }
+.upgrade-dialog {
+  background: var(--card); border-radius: 20px;
+  padding: 24px 20px; margin: 24px; text-align: center;
+  max-width: 340px; width: 100%;
+}
+.upgrade-icon { font-size: 48px; margin-bottom: 10px; }
+.upgrade-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.upgrade-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.6; }
+.upgrade-features {
+  text-align: left; margin-bottom: 16px; font-size: 12px; color: var(--text);
+}
+.upgrade-features div { padding: 4px 0; }
+.upgrade-btn {
+  display: block; width: 100%; padding: 12px; border: none;
+  border-radius: 20px; font-size: 14px; font-weight: 700; cursor: pointer;
+  transition: all .15s; margin-bottom: 6px;
+}
+.upgrade-btn.primary {
+  background: linear-gradient(135deg, #C9A87C, #D4AF8D);
+  color: #fff;
+}
+.upgrade-btn.ghost {
+  background: var(--bg-secondary); color: var(--text-muted);
+}
+.upgrade-btn:active { transform: scale(.97); }
+
+/* ── 数据源 & API相关 ── */
+.data-source-badge {
+  display: inline-flex; align-items: center; gap: 2px;
+  font-size: 9px; font-weight: 600; padding: 2px 7px;
+  border-radius: 6px; margin-left: 4px;
+}
+.data-source-badge.live { background: #E6EEE6; color: #6A9B6D; }
+.data-source-badge.mock { background: #EFEDEA; color: #B5B0A8; }
+.data-source-badge.loading { background: #F6ECE2; color: #D4946E; animation: pulse 1.2s infinite; }
+.data-source-badge.error { background: #F5E8E4; color: #C97B6A; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+
+.api-key-input {
+  flex: 1; border: none; background: none; font-size: 13px;
+  color: var(--text); outline: none; font-family: monospace;
+}
+.api-key-input::placeholder { color: var(--text-muted); font-family: inherit; }
+.api-save-btn {
+  background: var(--clr-shareholder); color: #fff; border: none;
+  padding: 5px 12px; border-radius: 12px; font-size: 11px;
+  font-weight: 600; cursor: pointer; transition: all .15s;
+}
+.api-save-btn:active { transform: scale(.94); }
+.api-status { font-size: 10px; margin-top: 4px; }
+
+.spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.refresh-btn {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 3px 10px; font-size: 10px;
+  font-weight: 600; color: var(--text-secondary); cursor: pointer;
+  transition: all .15s; display: inline-flex; align-items: center; gap: 3px;
+}
+.refresh-btn:active { transform: scale(.94); background: var(--card-hover); }
+.refresh-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── TabBar 极简SVG图标 ── */
+.tab-icon svg {
+  width: 22px; height: 22px; display: block; margin: 0 auto;
+  stroke: currentColor; fill: none; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.tab.active .tab-icon svg { stroke-width: 2.2; }
+
+/* 滚动条隐藏 */
+::-webkit-scrollbar { width: 0; }
+</style>
+</head>
+<body>
+
+<div class="error-toast" id="error-toast" onclick="this.classList.remove('show')"></div>
+<div class="app-shell" id="app">
+  <div class="status-bar">
+    <span id="status-time">9:41</span>
+    <span style="display:flex;gap:8px;align-items:center;">
+      <button onclick="toggleDark()" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text);">🌓</button>
+      <span style="font-size:11px;opacity:.5;">📶 🔋</span>
+    </span>
+  </div>
+
+  <!-- ═══════ 日历页 ═══════ -->
+  <div class="page active" id="page-calendar">
+    <div class="nav">
+      <div style="display:flex;align-items:center;gap:4px;">
+        <button class="nav-btn" onclick="changeMonth(-1)">◀</button>
+        <span class="nav-month" id="month-label">2026年6月</span>
+        <button class="nav-btn" onclick="changeMonth(1)">▶</button>
+        <span id="ds-badge" class="data-source-badge mock" title="点击刷新数据" onclick="refreshData()" style="cursor:pointer;">模拟</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="refresh-btn" id="refresh-btn" onclick="refreshData()" title="刷新数据"><span class="spinner" style="display:none;" id="refresh-spinner"></span><span id="refresh-label">🔄</span></button>
+        <button class="nav-btn" style="width:34px;height:34px;font-size:15px;" onclick="showSearch()">🔍</button>
+      </div>
+    </div>
+    <div class="subtabs" id="cal-subtabs">
+      <button class="subtab active" onclick="setCalView(0)">月视图</button>
+      <button class="subtab" onclick="setCalView(1)">周视图</button>
+      <button class="subtab" onclick="setCalView(2)">📊 财报季</button>
+    </div>
+    <!-- 月视图 -->
+    <div id="cal-month-view">
+      <div class="weekday-row"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+      <div class="calendar-grid" id="cal-grid"></div>
+      <div class="today-bar"><button class="today-btn" id="today-btn" onclick="goToday()">📍 今天</button></div>
+      <div class="event-area"><div class="event-date-label" id="ev-label"></div><div id="ev-list"></div></div>
+    </div>
+    <!-- 周视图 -->
+    <div id="cal-week-view" style="display:none;flex:1;overflow-y:auto;padding:0 10px;"></div>
+    <!-- 财报季 -->
+    <div id="cal-season-view" style="display:none;flex:1;overflow-y:auto;"></div>
+  </div>
+
+  <!-- ═══════ 自选股 ═══════ -->
+  <div class="page" id="page-watchlist">
+    <div class="nav">
+      <span class="nav-title">自选股</span>
+      <div style="display:flex;gap:6px;">
+        <button class="nav-btn" style="width:34px;height:34px;" onclick="importWatchlist()">📥</button>
+        <button class="nav-btn" style="width:34px;height:34px;font-size:18px;" onclick="showSearch()">➕</button>
+      </div>
+    </div>
+    <div class="wl-count" id="wl-count"></div>
+    <div class="wl-actions" id="wl-groups"></div>
+    <div style="flex:1;overflow-y:auto;" id="wl-list"></div>
+  </div>
+
+  <!-- ═══════ 发现 ═══════ -->
+  <div class="page" id="page-feed">
+    <div class="nav"><span class="nav-title">发现</span><span></span></div>
+    <div class="subtabs">
+      <button class="subtab active" onclick="setFeedFilter('all')">全部</button>
+      <button class="subtab" onclick="setFeedFilter('earnings')">📊 财报</button>
+      <button class="subtab" onclick="setFeedFilter('product')">🚀 产品</button>
+      <button class="subtab" onclick="setFeedFilter('dividend')">💰 分红</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding-top:4px;" id="feed-list"></div>
+  </div>
+
+  <!-- ═══════ 我的 ═══════ -->
+  <div class="page" id="page-profile">
+    <div class="nav"><span class="nav-title">我的</span><span></span></div>
+    <div style="flex:1;overflow-y:auto;padding-top:4px;">
+      <div class="profile-card">
+        <div class="profile-avatar" id="profile-avatar">📈</div>
+        <div class="profile-name" id="profile-name">投资者</div>
+        <div class="profile-sub" id="profile-stats">关注 5 只股票 · 本月 16 个事件</div>
+        <div id="membership-badge-inline" style="margin-top:6px;"></div>
+      </div>
+      <!-- 会员卡片 -->
+      <div class="membership-card" id="membership-card">
+        <div class="membership-badge" id="member-badge">FREE</div>
+        <div class="membership-title" id="member-title">免费用户</div>
+        <div class="membership-desc" id="member-desc">可关注 5 只股票 · 基础提醒</div>
+        <button class="membership-btn" id="member-btn" onclick="showUpgrade()">✨ 升级会员</button>
+      </div>
+      <div class="setting-group">
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none;">
+          <span style="font-size:14px;color:var(--text);">🔑 Tushare API (A股)</span>
+          <div class="api-status" id="av-api-status" style="color:var(--clr-dividend);">✅ 已配置 · A股财报披露+业绩预告</div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none;">
+          <span style="font-size:14px;color:var(--text);">🔑 FMP API Key (可选)</span>
+          <div style="display:flex;align-items:center;gap:6px;width:100%;">
+            <input type="password" class="api-key-input" id="api-key-input" placeholder="输入 Financial Modeling Prep API key…" autocomplete="off">
+            <button class="api-save-btn" onclick="saveApiKey()">保存</button>
+          </div>
+          <div class="api-status" id="api-status" style="color:var(--text-muted);">辅源 · 补充分红数据 · 免费获取: financialmodelingprep.com</div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-row"><span>🌓 暗黑模式</span><div class="toggle on" id="dark-toggle" onclick="toggleDark()"></div></div>
+      </div>
+      <!-- 背景色选择 -->
+      <div class="setting-group">
+        <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:8px;border-bottom:none;">
+          <span style="font-size:14px;color:var(--text);">🎨 背景色系</span>
+          <div class="bg-picker" id="bg-picker">
+            <div class="bg-swatch active" style="background:#D5CFC7;" data-bg="0" onclick="setBg(0)" title="暖灰"></div>
+            <div class="bg-swatch" style="background:#CFD3DA;" data-bg="1" onclick="setBg(1)" title="冷灰"></div>
+            <div class="bg-swatch" style="background:#D5CFCA;" data-bg="2" onclick="setBg(2)" title="烟灰"></div>
+            <div class="bg-swatch" style="background:#DED7CF;" data-bg="3" onclick="setBg(3)" title="奶灰"></div>
+            <div class="bg-swatch" style="background:#D2D6CE;" data-bg="4" onclick="setBg(4)" title="绿灰"></div>
+            <div class="bg-swatch" style="background:#D4D1DA;" data-bg="5" onclick="setBg(5)" title="紫灰"></div>
+            <div class="bg-swatch" style="background:#D9D2D3;" data-bg="6" onclick="setBg(6)" title="粉灰"></div>
+            <div class="bg-swatch" style="background:#D1D5DB;" data-bg="7" onclick="setBg(7)" title="蓝灰"></div>
+          </div>
+        </div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-row" onclick="toggleSwitch(this)"><span>📊 财报提醒</span><div class="toggle on"></div></div>
+        <div class="setting-row" onclick="toggleSwitch(this)"><span>👥 股东大会提醒</span><div class="toggle on"></div></div>
+        <div class="setting-row" onclick="toggleSwitch(this)"><span>🚀 产品发布提醒</span><div class="toggle on"></div></div>
+        <div class="setting-row" onclick="toggleSwitch(this)"><span>💰 分红除权提醒</span><div class="toggle on"></div></div>
+        <div class="setting-row" onclick="toggleSwitch(this)"><span>🏛️ IPO提醒</span><div class="toggle on"></div></div>
+      </div>
+      <div class="setting-group">
+        <div class="setting-row"><span>默认视图</span><span class="setting-val">月视图 ›</span></div>
+        <div class="setting-row"><span>数据来源</span><span class="setting-val">模拟数据 ›</span></div>
+        <div class="setting-row"><span>关于 StockCal</span><span class="setting-val">v2.0 · Web ›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TabBar -->
+  <div class="tab-bar">
+    <div class="tab active" data-page="calendar" onclick="switchTab('calendar')">
+      <span class="tab-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="3"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><rect x="7" y="13" width="3" height="3" rx=".5"/><rect x="14" y="13" width="3" height="3" rx=".5"/><rect x="7" y="17" width="3" height="3" rx=".5"/></svg></span>
+      <span class="tab-label">日历</span>
+    </div>
+    <div class="tab" data-page="watchlist" onclick="switchTab('watchlist')">
+      <span class="tab-icon"><svg viewBox="0 0 24 24"><polygon points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9"/></svg></span>
+      <span class="tab-label">自选股</span>
+    </div>
+    <div class="tab" data-page="feed" onclick="switchTab('feed')">
+      <span class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="8" cy="10" r="3.5"/><circle cx="16" cy="8" r="2.5"/><line x1="4" y1="20" x2="12" y2="14"/><line x1="14" y1="12" x2="20" y2="18"/><circle cx="12" cy="18" r="1.5"/></svg></span>
+      <span class="tab-label">发现</span>
+    </div>
+    <div class="tab" data-page="profile" onclick="switchTab('profile')">
+      <span class="tab-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+      <span class="tab-label">我的</span>
+    </div>
+  </div>
+
+  <!-- 搜索浮层 -->
+  <div class="search-overlay" id="search-overlay">
+    <div class="search-bar-row">
+      <div class="search-input-wrap">
+        <span style="font-size:13px;">🔍</span>
+        <input type="text" id="search-input" placeholder="搜中文名、代码…如「特斯拉」「腾讯」" oninput="doSearch()">
+      </div>
+      <button class="search-cancel" onclick="closeSearch()">取消</button>
+    </div>
+    <div class="search-hot"><div class="search-hot-label">热门关注</div><div class="hot-tags" id="hot-tags"></div></div>
+    <div style="flex:1;overflow-y:auto;" id="search-results"></div>
+  </div>
+
+  <!-- 事件详情 -->
+  <div class="sheet-mask" id="sheet-mask" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet"><div class="sheet-handle"></div><div id="sheet-body"></div></div>
+
+  <!-- 升级弹层 -->
+  <div class="upgrade-overlay" id="upgrade-overlay" onclick="closeUpgrade(event)">
+    <div class="upgrade-dialog" onclick="event.stopPropagation()">
+      <div class="upgrade-icon">👑</div>
+      <div class="upgrade-title">升级为高级会员</div>
+      <div class="upgrade-sub">解锁全部功能，获得更好的投资体验</div>
+      <div class="upgrade-features">
+        <div>✅ 无限关注股票</div>
+        <div>✅ 自定义背景色系</div>
+        <div>✅ 优先推送提醒</div>
+        <div>✅ 数据导出功能</div>
+        <div>✅ 去广告体验</div>
+      </div>
+      <button class="upgrade-btn primary" onclick="doUpgrade()">¥28/月 · 立即开通</button>
+      <button class="upgrade-btn ghost" onclick="closeUpgrade()">暂不需要</button>
+    </div>
+  </div>
+
+  <!-- 导入弹层 -->
+  <div class="search-overlay" id="import-overlay">
+    <div class="search-bar-row">
+      <span style="font-size:16px;font-weight:700;color:var(--text);">导入自选股</span>
+      <button class="search-cancel" onclick="closeImport()">关闭</button>
+    </div>
+    <div style="padding:20px;">
+      <div class="setting-group" style="margin:0;">
+        <div class="setting-row" onclick="importFromClipboard()"><span>📋 从剪贴板导入</span><span class="setting-val">识别股票代码 ›</span></div>
+        <div class="setting-row"><span>📁 选择文件导入</span><span class="setting-val">支持 CSV/Excel ›</span></div>
+      </div>
+      <p style="margin-top:16px;font-size:12px;color:var(--text-muted);text-align:center;">支持东方财富、同花顺、雪球等导出的自选股文件。<br>粘贴包含股票代码的文本即可自动识别。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════ DATA ═══════════════════
+const EVENT_COLORS = {
+  earnings:    { hex:'#C97B6A', bg:'#F5E8E4', name:'财报发布', icon:'📊' },
+  forecast:    { hex:'#D4946E', bg:'#F6ECE2', name:'业绩预告', icon:'📈' },
+  shareholder: { hex:'#7B95A8', bg:'#E4EBF0', name:'股东大会', icon:'👥' },
+  product:     { hex:'#D4946E', bg:'#F6ECE2', name:'产品发布会',icon:'🚀' },
+  dividend:    { hex:'#8AA88B', bg:'#E6EEE6', name:'分红除权',  icon:'💰' },
+  investor:    { hex:'#B5B0A8', bg:'#EFEDEA', name:'投资者会议',icon:'🎤' },
+  ipo:         { hex:'#9B8DB5', bg:'#EFEBF3', name:'IPO',       icon:'🏛️' },
+  other:       { hex:'#B5B0A8', bg:'#EFEDEA', name:'其他事件',  icon:'📌' },
+};
+
+const STOCK_COLORS = ['#C49B8A','#A8B5A2','#9BAEBF','#D4AF8D','#B8A5C0','#C4A882','#9BB5B0','#C2A0AE','#A898C0','#B0A090','#C8B8A8','#A0B0B8','#C49B7A','#8AA88B','#7B95A8','#D4946E'];
+
+// 中英文名映射（API 发现新股票时自动匹配中文名）
+const CN_NAME_MAP = {
+  'AAPL':'苹果', 'TSLA':'特斯拉', 'GOOGL':'谷歌', 'GOOG':'谷歌', 'MSFT':'微软',
+  'NVDA':'英伟达', 'AMZN':'亚马逊', 'META':'Meta', 'AMD':'超威半导体', 'INTC':'英特尔',
+  'BABA':'阿里巴巴', 'BIDU':'百度', 'JD':'京东', 'NIO':'蔚来', 'XPEV':'小鹏', 'LI':'理想',
+  'PDD':'拼多多', 'BILI':'哔哩哔哩', 'TME':'腾讯音乐', 'NTES':'网易', 'ZTO':'中通快递',
+  'NFLX':'奈飞', 'DIS':'迪士尼', 'PYPL':'PayPal', 'UBER':'优步', 'SNAP':'Snap',
+  'CRM':'赛富时', 'ADBE':'奥多比', 'ORCL':'甲骨文', 'IBM':'IBM', 'CSCO':'思科',
+  'QCOM':'高通', 'AVGO':'博通', 'TXN':'德州仪器', 'MU':'美光', 'MRVL':'迈威尔',
+  'TSM':'台积电', 'ASML':'阿斯麦', 'ARM':'安谋', 'SMCI':'超微电脑',
+  'JPM':'摩根大通', 'GS':'高盛', 'MS':'摩根士丹利', 'BAC':'美国银行', 'C':'花旗',
+  'BRK.A':'伯克希尔', 'BRK.B':'伯克希尔', 'WMT':'沃尔玛', 'KO':'可口可乐', 'PEP':'百事',
+  'MCD':'麦当劳', 'SBUX':'星巴克', 'NKE':'耐克', 'COST':'好市多', 'HD':'家得宝',
+  'PFE':'辉瑞', 'JNJ':'强生', 'UNH':'联合健康', 'LLY':'礼来', 'ABBV':'艾伯维',
+  'XOM':'埃克森美孚', 'CVX':'雪佛龙', 'COP':'康菲石油', 'SHEL':'壳牌',
+  'BA':'波音', 'CAT':'卡特彼勒', 'GE':'通用电气', 'F':'福特', 'GM':'通用汽车',
+  'SPY':'标普500ETF', 'QQQ':'纳指100ETF', 'IWM':'罗素2000ETF', 'DIA':'道指ETF',
+};
+
+function getChineseName(symbol) {
+  // 先从映射表查
+  if (CN_NAME_MAP[symbol]) return CN_NAME_MAP[symbol];
+  // A股/港股已经中文的不动
+  return '';
+}
+
+const stocks = [
+  // ── 美股（中文名） ──
+  { symbol:'AAPL', name:'苹果', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[0], following:true },
+  { symbol:'TSLA', name:'特斯拉', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[1], following:true },
+  { symbol:'GOOGL',name:'谷歌', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[2], following:true },
+  { symbol:'MSFT', name:'微软', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[3], following:true },
+  { symbol:'NVDA', name:'英伟达', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[4], following:true },
+  { symbol:'AMZN', name:'亚马逊', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[5], following:false },
+  { symbol:'META', name:'Meta', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[6], following:false },
+  { symbol:'AMD',  name:'超威半导体', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[7], following:false },
+  { symbol:'INTC', name:'英特尔', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[8], following:false },
+  { symbol:'BABA', name:'阿里巴巴', exchange:'NYSE', market:'🇺🇸', color:STOCK_COLORS[9], following:false },
+  { symbol:'NFLX', name:'奈飞', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[12], following:false },
+  { symbol:'DIS',  name:'迪士尼', exchange:'NYSE', market:'🇺🇸', color:STOCK_COLORS[13], following:false },
+  { symbol:'AVGO', name:'博通', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[14], following:false },
+  { symbol:'TSM',  name:'台积电', exchange:'NYSE', market:'🇺🇸', color:STOCK_COLORS[15], following:false },
+  { symbol:'ORCL', name:'甲骨文', exchange:'NYSE', market:'🇺🇸', color:STOCK_COLORS[5], following:false },
+  { symbol:'ADBE', name:'奥多比', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[6], following:false },
+  { symbol:'CRM',  name:'赛富时', exchange:'NYSE', market:'🇺🇸', color:STOCK_COLORS[7], following:false },
+  { symbol:'QCOM', name:'高通', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[8], following:false },
+  { symbol:'UBER', name:'优步', exchange:'NYSE', market:'🇺🇸', color:STOCK_COLORS[9], following:false },
+  { symbol:'MU',   name:'美光', exchange:'NASDAQ', market:'🇺🇸', color:STOCK_COLORS[10], following:false },
+  // ── A股 ──
+  { symbol:'600519',name:'贵州茅台', exchange:'上交所', market:'🇨🇳', color:STOCK_COLORS[10], following:false },
+  { symbol:'000858',name:'五粮液', exchange:'深交所', market:'🇨🇳', color:STOCK_COLORS[11], following:false },
+  { symbol:'300750',name:'宁德时代', exchange:'深交所', market:'🇨🇳', color:STOCK_COLORS[2], following:false },
+  { symbol:'002594',name:'比亚迪', exchange:'深交所', market:'🇨🇳', color:STOCK_COLORS[12], following:false },
+  { symbol:'601318',name:'中国平安', exchange:'上交所', market:'🇨🇳', color:STOCK_COLORS[13], following:false },
+  { symbol:'600036',name:'招商银行', exchange:'上交所', market:'🇨🇳', color:STOCK_COLORS[14], following:false },
+  { symbol:'000333',name:'美的集团', exchange:'深交所', market:'🇨🇳', color:STOCK_COLORS[15], following:false },
+  { symbol:'300059',name:'东方财富', exchange:'深交所', market:'🇨🇳', color:STOCK_COLORS[0], following:false },
+  { symbol:'601899',name:'紫金矿业', exchange:'上交所', market:'🇨🇳', color:STOCK_COLORS[1], following:false },
+  { symbol:'002475',name:'立讯精密', exchange:'深交所', market:'🇨🇳', color:STOCK_COLORS[2], following:false },
+  { symbol:'600900',name:'长江电力', exchange:'上交所', market:'🇨🇳', color:STOCK_COLORS[3], following:false },
+  // ── 港股 ──
+  { symbol:'0700',  name:'腾讯控股', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[0], following:false },
+  { symbol:'9988',  name:'阿里巴巴-SW', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[1], following:false },
+  { symbol:'3690',  name:'美团-W', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[12], following:false },
+  { symbol:'1810',  name:'小米集团-W', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[13], following:false },
+  { symbol:'9618',  name:'京东集团-SW', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[14], following:false },
+  { symbol:'9999',  name:'网易-S', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[15], following:false },
+  { symbol:'2269',  name:'药明生物', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[3], following:false },
+  { symbol:'2015',  name:'理想汽车-W', exchange:'港交所', market:'🇭🇰', color:STOCK_COLORS[4], following:false },
+];
+
+const events = [
+  { id:1, symbol:'AAPL', type:'earnings', date:'2026-06-15', time:'16:30', tz:'美东', title:'Q3 财报发布', desc:'苹果第三季度财报发布', extra:{'预期EPS':'$2.35','预期营收':'$95.2B'} },
+  { id:2, symbol:'TSLA', type:'shareholder', date:'2026-06-20', time:'10:00', tz:'美东', title:'年度股东大会', desc:'特斯拉年度股东大会，投票表决多项重要议案', extra:{'地点':'Austin, TX'} },
+  { id:3, symbol:'GOOGL',type:'product', date:'2026-06-18', time:'13:00', tz:'美东', title:'Google I/O 开发者大会', desc:'谷歌年度开发者大会，聚焦AI新功能', extra:{'焦点':'Gemini 3.0'} },
+  { id:4, symbol:'MSFT', type:'dividend', date:'2026-06-10', time:null, tz:null, title:'分红除权日', desc:'微软季度分红除权', extra:{'每股分红':'$0.83','股息率':'0.7%'} },
+  { id:5, symbol:'NVDA', type:'earnings', date:'2026-06-22', time:'16:20', tz:'美东', title:'Q1 财报发布', desc:'英伟达Q1财报，AI芯片业务持续高增长', extra:{'预期EPS':'$6.88','预期营收':'$38.5B'} },
+  { id:6, symbol:'AMZN', type:'investor', date:'2026-06-05', time:'09:00', tz:'美东', title:'投资者日', desc:'亚马逊投资者日，讨论云计算与AI战略', extra:{'主题':'AWS AI战略'} },
+  { id:7, symbol:'META', type:'product', date:'2026-06-25', time:'10:00', tz:'美东', title:'Meta Connect 大会', desc:'预计发布新一代VR/AR产品', extra:{'焦点':'Quest 4 + AI眼镜'} },
+  { id:8, symbol:'AAPL', type:'product', date:'2026-06-03', time:'10:00', tz:'美东', title:'WWDC 2026 全球开发者大会', desc:'苹果全球开发者大会，预计发布iOS 20和AI新功能', extra:{'焦点':'iOS 20 · AI'} },
+  { id:9, symbol:'TSLA', type:'product', date:'2026-06-12', time:'14:00', tz:'美东', title:'新车型交付仪式', desc:'特斯拉新车型首批交付活动', extra:{'地点':'Fremont, CA'} },
+  { id:10,symbol:'MSFT', type:'earnings', date:'2026-06-28', time:'16:00', tz:'美东', title:'Q4 财报发布', desc:'微软第四季度财报', extra:{'预期EPS':'$3.20','预期营收':'$68.5B'} },
+  { id:11,symbol:'GOOGL',type:'dividend', date:'2026-06-08', time:null, tz:null, title:'分红除权日', desc:'谷歌季度分红除权', extra:{'每股分红':'$0.25'} },
+  { id:12,symbol:'NVDA', type:'investor', date:'2026-06-14', time:'11:00', tz:'美东', title:'分析师日', desc:'英伟达投资者关系分析师会议', extra:{'焦点':'Blackwell芯片进度'} },
+  { id:13,symbol:'TSLA', type:'earnings', date:'2026-06-30', time:'16:30', tz:'美东', title:'Q2 财报发布', desc:'特斯拉第二季度财报', extra:{'预期EPS':'$0.85','预期营收':'$28.2B'} },
+  { id:14,symbol:'AAPL', type:'dividend', date:'2026-06-24', time:null, tz:null, title:'分红除权日', desc:'苹果季度分红除权', extra:{'每股分红':'$0.26'} },
+  { id:15,symbol:'600519',type:'dividend', date:'2026-06-18', time:null, tz:null, title:'分红除权日', desc:'贵州茅台年度分红', extra:{'每股分红':'¥25.91','股息率':'1.5%'} },
+  { id:16,symbol:'0700',  type:'earnings', date:'2026-06-12', time:'16:00', tz:'HKT', title:'Q1 财报发布', desc:'腾讯控股第一季度财报', extra:{'预期营收':'HK$168B','焦点':'游戏+广告业务'} },
+  { id:17,symbol:'300750',type:'product', date:'2026-06-20', time:'14:00', tz:'CST', title:'新品发布会', desc:'宁德时代固态电池新品发布', extra:{'焦点':'固态电池·500Wh/kg'} },
+  { id:18,symbol:'002594',type:'earnings', date:'2026-06-15', time:null, tz:'CST', title:'年中财报', desc:'比亚迪中期业绩发布', extra:{'预期营收':'¥320B','焦点':'海外销量'} },
+  { id:19,symbol:'3690',  type:'earnings', date:'2026-06-08', time:'16:00', tz:'HKT', title:'Q1 财报发布', desc:'美团第一季度财报', extra:{'预期营收':'¥85B'} },
+  { id:20,symbol:'AVGO',  type:'earnings', date:'2026-06-12', time:'16:15', tz:'美东', title:'Q2 财报发布', desc:'博通第二季度财报，AI芯片收入成焦点', extra:{'预期EPS':'$1.52','焦点':'AI芯片营收'} },
+  { id:21,symbol:'ORCL',  type:'earnings', date:'2026-06-10', time:'16:00', tz:'美东', title:'Q4 财报发布', desc:'甲骨文第四季度财报，云计算业务增长', extra:{'预期EPS':'$1.58'} },
+  { id:22,symbol:'1810',  type:'product', date:'2026-06-18', time:'14:00', tz:'CST', title:'小米新品发布会', desc:'小米汽车+手机双新品', extra:{'焦点':'SU7交付量'} },
+  { id:23,symbol:'ADBE',  type:'earnings', date:'2026-06-11', time:'16:00', tz:'美东', title:'Q2 财报发布', desc:'奥多比第二季度财报', extra:{'预期EPS':'$4.74'} },
+];
+
+const feedItems = [
+  { symbol:'AAPL', type:'product', title:'苹果WWDC 2026定档6月3日：iOS 20与AI成最大看点', desc:'苹果公司确认WWDC 2026将于6月3日在Apple Park举行，预计发布iOS 20、iPadOS 18和多项AI新功能。', time:'2小时前' },
+  { symbol:'NVDA', type:'earnings', title:'英伟达Q1财报预期大幅上调，AI芯片需求持续井喷', desc:'多家华尔街投行上调英伟达Q1营收预期至385亿美元，Blackwell芯片产能爬坡成为关注焦点。', time:'5小时前' },
+  { symbol:'TSLA', type:'product', title:'特斯拉新车型交付活动定档6月12日', desc:'特斯拉宣布将于6月12日在Fremont工厂举行新车型首批交付仪式，市场猜测为全新入门级车型。', time:'昨天' },
+  { symbol:'MSFT', type:'dividend', title:'微软维持季度分红$0.83/股，连续20年增长', desc:'微软董事会批准维持每股$0.83的季度分红，除权日为6月10日，彰显稳健现金流。', time:'昨天' },
+  { symbol:'GOOGL',type:'product', title:'谷歌I/O 2026议程公布：AI与云计算成双主线', desc:'谷歌公布I/O大会议程，Gemini 3.0和Google Cloud成为焦点，预计推出多项AI开发者工具。', time:'2天前' },
+  { symbol:'600519',type:'dividend', title:'贵州茅台2025年度分红方案出炉：每股25.91元', desc:'贵州茅台公告每股分红25.91元，除权日为6月18日，股息率约1.5%，分红总额创新高。', time:'1天前' },
+  { symbol:'0700',  type:'earnings', title:'腾讯Q1财报前瞻：游戏业务强势复苏', desc:'市场预计腾讯Q1营收约1680亿港元，游戏和广告业务有望实现双位数增长，DNF手游成最大变量。', time:'4小时前' },
+  { symbol:'300750',type:'product', title:'宁德时代固态电池发布会定档6月20日', desc:'宁德时代宣布固态电池新品发布会定于6月20日，预计能量密度突破500Wh/kg，引发行业震动。', time:'1天前' },
+  { symbol:'002594',type:'earnings', title:'比亚迪年中业绩前瞻：海外销量成最大看点', desc:'比亚迪上半年海外销量突破50万辆，叠加国内新能源渗透率持续提升，机构普遍看好Q2业绩表现。', time:'3小时前' },
+  { symbol:'3690',  type:'earnings', title:'美团Q1业绩前瞻：即时零售增长强劲', desc:'分析师预计美团Q1营收850亿元，即时零售和到店酒旅业务成为增长引擎，利润有望超预期。', time:'6小时前' },
+  { symbol:'AVGO',  type:'earnings', title:'博通Q2财报前瞻：AI芯片收入能否再超预期？', desc:'博通AI定制芯片收入成为市场焦点，VMware整合进展也是重要观察指标。', time:'8小时前' },
+  { symbol:'1810',  type:'product', title:'小米汽车SU7交付量持续攀升，6月或破3万', desc:'小米SU7上市以来累计交付突破15万辆，6月产能有望突破3万台，带动小米股价持续走高。', time:'昨天' },
+];
+
+// State
+let curMonth = 6, curYear = 2026;
+let selDate = new Date(2026, 5, 7);
+let calView = 0; // 0=月 1=周 2=财报季
+let feedFilter = 'all';
+let isDark = false;
+let activeGroup = 'all';
+let isPremium = false;          // 会员状态
+const MAX_FREE_STOCKS = 5;     // 免费用户关注上限
+let currentBg = 0;              // 当前背景色系
+
+// ═══════════════════ 错误显示 ═══════════════════
+function showError(title, detail, ttl) {
+  const toast = document.getElementById('error-toast');
+  toast.innerHTML = `<div class="err-title">⚠️ ${title}</div><div class="err-detail">${detail}</div>`;
+  toast.classList.add('show');
+  if (ttl) setTimeout(() => toast.classList.remove('show'), ttl);
+  console.error('[StockCal]', title, detail);
+}
+
+// 获取已关注股票的 symbol 集合
+function followedSymbols() {
+  return new Set(stocks.filter(s => s.following).map(s => s.symbol));
+}
+
+// 获取仅关注股票的事件（日历界面专用）
+function followedEvents() {
+  const syms = followedSymbols();
+  return events.filter(e => syms.has(e.symbol));
+}
+
+// ═══════════════════ INIT ═══════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  loadPrefs();
+  loadApiKeyUI();
+  updateStatusTime();
+  setInterval(updateStatusTime, 60000);
+  renderAll();
+  // 检测本地服务器 → 拉取数据
+  await checkServer();
+  autoFetchIfKey();
+});
+
+function loadPrefs() {
+  try {
+    if (localStorage.getItem('stockcal-dark') === '1') { isDark = true; document.body.classList.add('dark'); document.getElementById('dark-toggle').classList.add('on'); }
+    if (localStorage.getItem('stockcal-premium') === '1') { isPremium = true; }
+    const bg = localStorage.getItem('stockcal-bg');
+    if (bg !== null) { currentBg = parseInt(bg); setBg(currentBg, true); }
+  } catch(_) {}
+}
+
+function updateStatusTime() {
+  const now = new Date();
+  document.getElementById('status-time').textContent =
+    now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+
+function renderAll() {
+  renderCal();
+  renderEvents();
+  renderWL();
+  renderFeed();
+  renderHotTags();
+  updateTodayBtn();
+  updateProfileStats();
+}
+
+// ═══════════════════ DARK MODE ═══════════════════
+function toggleDark() {
+  isDark = !isDark;
+  document.body.classList.toggle('dark', isDark);
+  document.getElementById('dark-toggle').classList.toggle('on', isDark);
+  try { localStorage.setItem('stockcal-dark', isDark?'1':'0'); } catch(_){}
+}
+
+// ═══════════════════ CALENDAR ═══════════════════
+function setCalView(v) {
+  calView = v;
+  document.querySelectorAll('#cal-subtabs .subtab').forEach((b,i) => b.classList.toggle('active', i===v));
+  document.getElementById('cal-month-view').style.display = v===0 ? '' : 'none';
+  document.getElementById('cal-week-view').style.display = v===1 ? '' : 'none';
+  document.getElementById('cal-season-view').style.display = v===2 ? '' : 'none';
+  if (v===1) renderWeekView();
+  if (v===2) renderSeasonView();
+}
+
+function renderCal() {
+  const grid = document.getElementById('cal-grid');
+  const fd = new Date(curYear, curMonth-1, 1);
+  const ld = new Date(curYear, curMonth, 0);
+  const dim = ld.getDate();
+  const sow = (fd.getDay() + 6) % 7;
+  document.getElementById('month-label').textContent = `${curYear}年${curMonth}月`;
+
+  const today = new Date();
+  const todayStr = fmtDate(today);
+  let html = '';
+  const total = Math.ceil((sow + dim) / 7) * 7;
+
+  const prevLast = new Date(curYear, curMonth-1, 0).getDate();
+  const prevY = curMonth===1 ? curYear-1 : curYear;
+  const prevM = curMonth===1 ? 12 : curMonth-1;
+  for (let i = sow-1; i >= 0; i--) {
+    html += dayCell(prevLast - i, 'other-month', prevY, prevM);
+  }
+  for (let d = 1; d <= dim; d++) {
+    const ds = `${curYear}-${pad(curMonth)}-${pad(d)}`;
+    let cls = '';
+    if (ds === todayStr) cls = 'today';
+    if (isSel(d)) cls += (cls?' ':'') + 'selected';
+    html += dayCell(d, cls, curYear, curMonth);
+  }
+  const rem = total - (sow + dim);
+  const nextY = curMonth===12 ? curYear+1 : curYear;
+  const nextM = curMonth===12 ? 1 : curMonth+1;
+  for (let d = 1; d <= rem; d++) {
+    html += dayCell(d, 'other-month', nextY, nextM);
+  }
+  grid.innerHTML = html;
+}
+
+function dayCell(day, cls, y, m) {
+  const ds = `${y}-${pad(m)}-${pad(day)}`;
+  const devs = followedEvents().filter(e => e.date === ds);
+
+  // 按事件类型去重，生成彩色圆点 + 公司名缩写
+  let dots = '';
+  let syms = '';
+  if (devs.length > 0) {
+    const types = [...new Set(devs.map(e => e.type))];
+    const show = types.slice(0, 4);
+    dots = '<div class="day-dots">';
+    show.forEach(t => {
+      const c = EVENT_COLORS[t] ? EVENT_COLORS[t].hex : '#B5B0A8';
+      dots += `<span class="day-dot" style="background:${c};"></span>`;
+    });
+    if (types.length > 4) {
+      dots += `<span style="font-size:6px;color:var(--text-muted);">+${types.length-4}</span>`;
+    }
+    dots += '</div>';
+
+    // 公司名缩写（去重，最多显示2个，优先中文名）
+    const symSet = [...new Set(devs.map(e => e.symbol))];
+    const showSyms = symSet.slice(0, 2);
+    syms = '<div class="day-syms">';
+    showSyms.forEach(s => {
+      const st = stocks.find(x => x.symbol === s);
+      const short = st ? (st.name.length > 3 ? st.name.slice(0,3) : st.name) : (s.length > 4 ? s.slice(0,4) : s);
+      syms += `<span class="day-sym">${short}</span>`;
+    });
+    if (symSet.length > 2) {
+      syms += `<span class="day-sym">+${symSet.length-2}</span>`;
+    }
+    syms += '</div>';
+  }
+
+  return `<div class="day-cell ${cls}" onclick="sel(${y},${m},${day})">
+    <div class="day-num">${day}</div>${dots}${syms}
+  </div>`;
+}
+
+function renderWeekView() {
+  const ctn = document.getElementById('cal-week-view');
+  const weekStart = getWeekStart(selDate);
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    days.push(d);
+  }
+
+  const today = new Date();
+  ctn.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;">
+      <button class="nav-btn" onclick="shiftWeek(-7)">◀</button>
+      <span style="font-size:13px;font-weight:600;color:var(--text);">${fmtDate(days[0])} — ${fmtDate(days[6])}</span>
+      <button class="nav-btn" onclick="shiftWeek(7)">▶</button>
+    </div>
+    ${days.map(d => {
+      const ds = fmtDate(d);
+      const devs = followedEvents().filter(e => e.date === ds);
+      const isToday = ds === fmtDate(today);
+      const isSel = ds === fmtDate(selDate);
+      return `<div style="padding:8px 4px;margin-bottom:3px;background:${isSel?'var(--card)':'transparent'};border-radius:12px;${isToday?'border:1px solid var(--clr-earnings);':''}" onclick="selWeekDay('${ds}')">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:44px;text-align:center;">
+            <div style="font-size:10px;color:${isToday?'var(--clr-earnings)':'var(--text-muted)'};">${weekdayCN(d.getDay()===0?7:d.getDay())}</div>
+            <div style="font-size:15px;font-weight:700;color:${isToday?'var(--clr-earnings)':'var(--text)'};">${d.getMonth()+1}/${d.getDate()}</div>
+          </div>
+          <div style="flex:1;">${devs.length===0?'<span style="font-size:11px;color:var(--text-muted);">无事件</span>':devs.slice(0,3).map(e => {
+            const past = e.date < fmtDate(today);
+            const c = EVENT_COLORS[e.type];
+            const st = stocks.find(s => s.symbol === e.symbol);
+            const dn = st ? st.name : e.symbol;
+            return `<div style="display:flex;align-items:center;gap:4px;margin-bottom:1px;">
+              <span style="width:5px;height:5px;border-radius:3px;background:${past?'var(--clr-past)':c.hex};flex-shrink:0;"></span>
+              <span style="font-size:11px;color:${past?'var(--clr-past)':'var(--text)'};${past?'text-decoration:line-through':''};">${dn} ${e.title}</span>
+            </div>`;
+          }).join('')}</div>
+          ${devs.length>3?`<span style="font-size:10px;color:var(--text-muted);">+${devs.length-3}</span>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function renderSeasonView() {
+  const ctn = document.getElementById('cal-season-view');
+  const year = curYear;
+  const q = Math.ceil(curMonth / 3);
+
+  const earningsEvents = followedEvents().filter(e => {
+    const em = parseInt(e.date.slice(5,7));
+    const eq = Math.ceil(em / 3);
+    const ey = parseInt(e.date.slice(0,4));
+    return ey === year && eq === q && e.type === 'earnings';
+  });
+
+  const weekMap = {};
+  earningsEvents.forEach(e => {
+    const d = new Date(e.date);
+    const w = Math.ceil(d.getDate() / 7);
+    if (!weekMap[w]) weekMap[w] = [];
+    weekMap[w].push(e);
+  });
+
+  const maxEv = Math.max(1, ...Object.values(weekMap).map(a => a.length));
+
+  ctn.innerHTML = `
+    <div class="season-header">
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;">
+        <button class="nav-btn" onclick="shiftSeason(-1)">◀</button>
+        <div class="season-title">${year}年 Q${q}</div>
+        <button class="nav-btn" onclick="shiftSeason(1)">▶</button>
+      </div>
+      <div class="season-sub">${earningsEvents.length} 份财报</div>
+    </div>
+    <div class="heatmap-bar">
+      ${[1,2,3,4,5].map(w => {
+        const evs = weekMap[w] || [];
+        const pct = Math.max(5, (evs.length/maxEv)*100);
+        return `<div class="heat-row">
+          <span class="heat-label">W${w}</span>
+          <div class="heat-fill"><div class="heat-fill-inner" style="width:${pct}%;background:${pct>60?'var(--clr-earnings)':'var(--clr-earnings-bg)'}"></div></div>
+          <span class="heat-count">${evs.length}只</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="padding:0 14px;">
+      ${earningsEvents.length===0?`<div class="ev-empty">📊 本季度暂无财报事件</div>`:
+      earningsEvents.map(e => {
+        const st = stocks.find(s=>s.symbol===e.symbol);
+        const past = e.date < fmtDate(new Date());
+        return `<div style="padding:10px 12px;margin-bottom:5px;background:var(--card);border-radius:10px;display:flex;align-items:center;gap:8px;">
+          <span style="width:6px;height:6px;border-radius:3px;background:${past?'var(--clr-past)':'var(--clr-earnings)'};flex-shrink:0;"></span>
+          <span style="flex:1;font-size:13px;font-weight:600;color:${past?'var(--clr-past)':'var(--text)'};${past?'text-decoration:line-through':''};">${st?st.name:e.symbol} · ${e.title}</span>
+          <span style="font-size:11px;color:var(--text-muted);">${e.date.slice(5)}</span>
+          ${past?'<span style="font-size:10px;background:var(--clr-past-bg);color:var(--clr-past);padding:2px 6px;border-radius:6px;">已发布</span>':''}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
+function shiftWeek(d) {
+  selDate = new Date(selDate);
+  selDate.setDate(selDate.getDate() + d);
+  curMonth = selDate.getMonth() + 1;
+  curYear = selDate.getFullYear();
+  renderWeekView();
+  renderCal();
+  renderEvents();
+}
+
+function shiftSeason(d) {
+  curMonth += d * 3;
+  if (curMonth > 12) { curMonth -= 12; curYear++; }
+  if (curMonth < 1) { curMonth += 12; curYear--; }
+  selDate = new Date(curYear, curMonth-1, 1);
+  renderSeasonView();
+  renderCal();
+  renderEvents();
+}
+
+function selWeekDay(ds) {
+  selDate = new Date(ds);
+  curMonth = selDate.getMonth() + 1;
+  curYear = selDate.getFullYear();
+  renderWeekView();
+  renderCal();
+  renderEvents();
+  updateTodayBtn();
+}
+
+function getWeekStart(d) {
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
+}
+
+function changeMonth(d) {
+  curMonth += d;
+  if (curMonth > 12) { curMonth=1; curYear++; }
+  if (curMonth < 1) { curMonth=12; curYear--; }
+  selDate = new Date(curYear, curMonth-1, 1);
+  renderCal();
+  renderEvents();
+  if (calView===1) renderWeekView();
+  if (calView===2) renderSeasonView();
+}
+
+function sel(y, m, d) {
+  selDate = new Date(y, m-1, d);
+  curMonth = m; curYear = y;
+  renderCal();
+  renderEvents();
+  updateTodayBtn();
+  if (calView===1) renderWeekView();
+}
+
+function isSel(d) {
+  return selDate.getFullYear()===curYear && selDate.getMonth()===curMonth-1 && selDate.getDate()===d;
+}
+
+function goToday() {
+  const t = new Date();
+  curMonth = t.getMonth()+1;
+  curYear = t.getFullYear();
+  selDate = t;
+  renderCal();
+  renderEvents();
+  updateTodayBtn();
+}
+
+function updateTodayBtn() {
+  const t = new Date();
+  document.getElementById('today-btn').className =
+    (selDate.getFullYear()===t.getFullYear() && selDate.getMonth()===t.getMonth() && selDate.getDate()===t.getDate())
+    ? 'today-btn hidden' : 'today-btn';
+}
+
+// ═══════════════════ EVENTS ═══════════════════
+function renderEvents() {
+  const ds = fmtDate(selDate);
+  const devs = followedEvents().filter(e => e.date === ds);
+  const today = fmtDate(new Date());
+
+  document.getElementById('ev-label').textContent =
+    `${selDate.getMonth()+1}月${selDate.getDate()}日 · ${weekdayCN(selDate.getDay()===0?7:selDate.getDay())}`;
+
+  const ctn = document.getElementById('ev-list');
+  if (!devs.length) {
+    ctn.innerHTML = '<div class="ev-empty">📭 当天无事件<br><span style="font-size:11px;">去搜索添加关注的股票吧</span></div>';
+    return;
+  }
+  ctn.innerHTML = devs.map(e => {
+    const st = stocks.find(s => s.symbol===e.symbol);
+    const meta = EVENT_COLORS[e.type];
+    const past = e.date < today;
+    const dotColor = st ? st.color : meta.hex;
+    const displayName = st ? st.name : e.symbol;
+    return `<div class="ev-card ${past?'past':''}" onclick="openSheet(${e.id})">
+      <div class="ev-dot" style="background:${past?'var(--clr-past)':dotColor};"></div>
+      <div class="ev-body">
+        <div class="ev-symbol">${meta.icon} ${displayName} · ${e.title}</div>
+        <div class="ev-title">${e.symbol}${st ? ' · ' + st.market + ' ' + st.exchange : ''}</div>
+      </div>
+      <span class="ev-status ${past?'done':''}">${past?'✓ 已结束':(e.time||'全天')}</span>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════ SHEET ═══════════════════
+function openSheet(id) {
+  const e = events.find(ev => ev.id===id);
+  if (!e) return;
+  const st = stocks.find(s => s.symbol===e.symbol);
+  const c = st ? st.color : EVENT_COLORS[e.type].hex;
+  const meta = EVENT_COLORS[e.type];
+  const ts = e.time ? `${e.time} (${e.tz||''})` : '全天事件';
+  const past = e.date < fmtDate(new Date());
+
+  let xtra = '';
+  if (e.extra && Object.keys(e.extra).length) {
+    xtra = '<div class="s-extra">';
+    Object.entries(e.extra).forEach(([k,v]) => { xtra += `<div><strong>${k}：</strong>${v}</div>`; });
+    xtra += '</div>';
+  }
+
+  document.getElementById('sheet-body').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="width:36px;height:36px;border-radius:10px;background:${past?'var(--clr-past-bg)':meta.bg};display:flex;align-items:center;justify-content:center;font-size:18px;">${meta.icon}</div>
+      <div class="s-type" style="${past?'color:var(--clr-past);text-decoration:line-through':''}">${meta.name}${past?' <span style="font-size:12px;color:var(--clr-past);">✓ 已结束</span>':''}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:13px;color:var(--text-secondary);">
+      <span style="width:6px;height:6px;border-radius:3px;background:${c};display:inline-block;"></span>
+      ${st?st.name:e.symbol} · ${e.symbol} ${st?st.market:''}
+    </div>
+    <div class="s-row"><span>📅</span><span>${e.date} · ${new Date(e.date).toLocaleDateString('zh-CN',{weekday:'long'})}</span></div>
+    <div class="s-row"><span>⏰</span><span>${ts}</span></div>
+    ${e.desc ? `<div class="s-row"><span>📝</span><span>${e.desc}</span></div>` : ''}
+    ${xtra}
+    <button class="s-btn primary" onclick="closeSheet()">🔔 添加提醒</button>
+    <button class="s-btn ghost" onclick="viewStock('${e.symbol}');closeSheet();">📊 查看 ${st?st.name:e.symbol} 近期事件</button>
+  `;
+  document.getElementById('sheet-mask').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+
+function closeSheet() {
+  document.getElementById('sheet-mask').classList.remove('show');
+  document.getElementById('sheet').classList.remove('show');
+}
+
+function viewStock(sym) {
+  switchTab('calendar');
+  const se = events.filter(e => e.symbol===sym);
+  if (se.length) {
+    const d = new Date(se[0].date);
+    curMonth = d.getMonth()+1; curYear = d.getFullYear(); selDate = d;
+    renderCal(); renderEvents(); updateTodayBtn();
+  }
+}
+
+// ═══════════════════ WATCHLIST ═══════════════════
+function renderWL() {
+  const fw = stocks.filter(s => activeGroup==='all' ? s.following : s.following && s.group===activeGroup);
+  document.getElementById('wl-count').textContent = `共关注 ${fw.length} 只股票`;
+
+  const groups = [...new Set(stocks.filter(s=>s.following&&s.group).map(s=>s.group))];
+  document.getElementById('wl-groups').innerHTML = [
+    `<button class="subtab ${activeGroup==='all'?'active':''}" onclick="setGroup('all')">全部</button>`,
+    ...groups.map(g => `<button class="subtab ${activeGroup===g?'active':''}" onclick="setGroup('${g}')">${g}</button>`)
+  ].join('');
+
+  document.getElementById('wl-list').innerHTML = fw.length===0 ?
+    '<div class="ev-empty">⭐<br>还没有关注的股票<br><span style="font-size:11px;">点击右上角 + 添加</span></div>' :
+    fw.map(st => {
+      const ne = events.filter(e => e.symbol===st.symbol && e.date>=fmtDate(new Date())).sort((a,b)=>a.date.localeCompare(b.date))[0];
+      const cnt = events.filter(e => e.symbol===st.symbol).length;
+      const nxt = ne ? `${EVENT_COLORS[ne.type].icon} ${ne.title} · ${ne.date.slice(5)}` : '暂无近期事件';
+      const initials = st.name.length >= 2 ? st.name.slice(0,2) : st.name;
+      return `<div class="wl-card" onclick="viewStock('${st.symbol}')">
+        <div class="wl-avatar" style="background:${st.color};">${initials}</div>
+        <div class="wl-info">
+          <div class="wl-symbol">${st.name} <span style="font-size:11px;font-weight:400;color:var(--text-muted);">${st.symbol} ${st.market}</span></div>
+          <div class="wl-next">${nxt}</div>
+        </div>
+        <div class="wl-badge">${cnt} 事件</div>
+      </div>`;
+    }).join('');
+}
+
+function setGroup(g) {
+  activeGroup = g;
+  renderWL();
+}
+
+// ═══════════════════ IMPORT ═══════════════════
+function importWatchlist() {
+  document.getElementById('import-overlay').classList.add('show');
+}
+
+function closeImport() {
+  document.getElementById('import-overlay').classList.remove('show');
+}
+
+function importFromClipboard() {
+  navigator.clipboard.readText().then(text => {
+    const codes = extractStockCodes(text);
+    if (codes.length === 0) { alert('未识别到股票代码'); return; }
+    const curCnt = stocks.filter(s => s.following).length;
+    let matched = 0, skipped = 0;
+    codes.forEach(c => {
+      const st = stocks.find(s => s.symbol === c);
+      if (st) {
+        if (!st.following) {
+          if (!isPremium && (curCnt + matched) >= MAX_FREE_STOCKS) { skipped++; return; }
+          st.following = true; matched++;
+        }
+      }
+    });
+    let msg = `识别到 ${codes.length} 个代码，成功匹配关注 ${matched} 个。`;
+    if (skipped > 0) msg += `\n${skipped} 个超出免费上限（最多${MAX_FREE_STOCKS}只），请升级会员后添加。`;
+    if (!isPremium && matched >= MAX_FREE_STOCKS) msg += '\n\n免费用户已满，点击"升级会员"解锁无限关注。';
+    alert(msg);
+    if (skipped > 0 && !isPremium) setTimeout(() => showUpgrade(), 1000);
+    closeImport();
+    renderAll();
+  }).catch(() => alert('无法读取剪贴板，请手动粘贴'));
+}
+
+function extractStockCodes(text) {
+  // 匹配 A股(6位数字)、港股(4-5位数字)、美股(大写字母)
+  const codes = [];
+  const cnRe = /(\d{6})/g;
+  const usRe = /\b([A-Z]{2,5})\b/g;
+  let m;
+  while ((m = cnRe.exec(text)) !== null) codes.push(m[1]);
+  while ((m = usRe.exec(text)) !== null) {
+    if (!['THE','AND','FOR','ARE','BUT','NOT','YOU','ALL','CAN','HAS','INC','LTD','CORP','COM','NET','NEW','CEO'].includes(m[1])) {
+      codes.push(m[1]);
+    }
+  }
+  return [...new Set(codes)];
+}
+
+// ═══════════════════ FMP API ═══════════════════
+const CACHE_TTL = 6 * 60 * 60 * 1000; // 6小时
+
+function getApiKey() {
+  try { return localStorage.getItem('stockcal-fmp-key') || ''; } catch(_) { return ''; }
+}
+
+function saveApiKey() {
+  const input = document.getElementById('api-key-input');
+  const key = input.value.trim();
+  const status = document.getElementById('api-status');
+  if (!key) { status.textContent = '请输入有效的 API Key'; status.style.color = 'var(--clr-earnings)'; return; }
+  try { localStorage.setItem('stockcal-fmp-key', key); } catch(_) {}
+  input.value = '';
+  const masked = key.slice(0, 6) + '••••' + key.slice(-4);
+  status.textContent = '✅ 已保存: ' + masked + ' · 正在拉取数据…';
+  status.style.color = 'var(--clr-dividend)';
+  refreshData();
+}
+
+function loadApiKeyUI() {
+  const key = getApiKey();
+  const status = document.getElementById('api-status');
+  if (key) {
+    const masked = key.slice(0, 6) + '••••' + key.slice(-4);
+    status.textContent = '✅ 已配置: ' + masked;
+    status.style.color = 'var(--clr-dividend)';
+  }
+}
+
+// 读取本地缓存（前端 localStorage，作为服务器离线时的兜底）
+function getCache(name) {
+  try {
+    const raw = localStorage.getItem('stockcal-cache-' + name);
+    if (!raw) return null;
+    const entry = JSON.parse(raw);
+    if (Date.now() - entry.ts > CACHE_TTL) return null;
+    return entry.data;
+  } catch(_) { return null; }
+}
+
+function setCache(name, data) {
+  try {
+    localStorage.setItem('stockcal-cache-' + name, JSON.stringify({ ts: Date.now(), data }));
+  } catch(_) {}
+}
+
+// 获取 FMP 财报日历（服务器优先）
+async function fetchFmpEarnings(from, to) {
+  const key = getApiKey();
+  if (!key) return [];
+
+  if (serverAvailable) {
+    const url = `${API_BASE}/api/fmp/earnings?from=${from}&to=${to}&apikey=${key}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`FMP Server ${resp.status}`);
+    return resp.json();
+  }
+  // 兜底直连
+  const url = `https://financialmodelingprep.com/api/v3/earning_calendar?from=${from}&to=${to}&apikey=${key}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`FMP ${resp.status}`);
+  return resp.json();
+}
+
+// 获取 FMP 分红日历（服务器优先）
+async function fetchFmpDividends(from, to) {
+  const key = getApiKey();
+  if (!key) return [];
+
+  if (serverAvailable) {
+    const url = `${API_BASE}/api/fmp/dividends?from=${from}&to=${to}&apikey=${key}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`FMP Server ${resp.status}`);
+    return resp.json();
+  }
+  const url = `https://financialmodelingprep.com/api/v3/stock_dividend_calendar?from=${from}&to=${to}&apikey=${key}`;
+  const resp = await fetch(url);
+  if (!resp.ok) throw new Error(`FMP ${resp.status}`);
+  return resp.json();
+}
+
+// 获取公司简介
+async function fetchFmpProfile(symbol) {
+  const key = getApiKey();
+  if (!key) return null;
+  const url = `https://financialmodelingprep.com/api/v3/profile/${symbol}?apikey=${key}`;
+  const resp = await fetch(url);
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data && data.length ? data[0] : null;
+}
+
+// FMP 数据 → App 事件格式
+function mapEarningsToEvents(raw, existingEvents) {
+  const idStart = Date.now();
+  return raw.map((item, i) => {
+    const symbol = item.symbol;
+    const date = item.date;
+    const timeStr = item.time === 'bmo' ? '08:30' : item.time === 'amc' ? '16:30' : null;
+    const tz = '美东';
+
+    // 推断Q
+    const d = new Date(date);
+    const q = Math.ceil((d.getMonth() + 1) / 3);
+
+    // 检查是否与已有事件重复 (同symbol+同date+earnings类型)
+    const dup = existingEvents && existingEvents.find(
+      e => e.symbol === symbol && e.date === date && e.type === 'earnings'
+    );
+
+    const extra = {};
+    if (item.epsEstimated != null && item.epsEstimated > 0) {
+      extra['预期EPS'] = '$' + Number(item.epsEstimated).toFixed(2);
+    }
+    if (item.revenueEstimated != null && item.revenueEstimated > 0) {
+      const rev = Number(item.revenueEstimated);
+      extra['预期营收'] = rev >= 1e9 ? '$' + (rev/1e9).toFixed(1) + 'B' : '$' + (rev/1e6).toFixed(0) + 'M';
+    }
+    if (item.fiscalDateEnding) {
+      extra['财报周期'] = item.fiscalDateEnding;
+    }
+
+    const cnName = getChineseName(symbol);
+    return {
+      id: dup ? dup.id : idStart + i,
+      symbol: symbol,
+      type: 'earnings',
+      date: date,
+      time: timeStr,
+      tz: tz,
+      title: `Q${q} 财报发布`,
+      desc: `${cnName || symbol} 季度财报${item.time==='bmo'?'（盘前）':item.time==='amc'?'（盘后）':''}`,
+      extra: extra,
+      _fromApi: true,
+    };
+  });
+}
+
+function mapDividendsToEvents(raw, existingEvents) {
+  const idStart = Date.now() + 100000;
+  return raw.map((item, i) => {
+    const symbol = item.symbol;
+    const date = item.date || item.paymentDate;
+    if (!date) return null;
+
+    const dup = existingEvents && existingEvents.find(
+      e => e.symbol === symbol && e.date === date && e.type === 'dividend'
+    );
+
+    const extra = {};
+    if (item.dividend != null) extra['每股分红'] = '$' + Number(item.dividend).toFixed(2);
+    if (item.recordDate) extra['登记日'] = item.recordDate;
+    if (item.paymentDate) extra['支付日'] = item.paymentDate;
+
+    return {
+      id: dup ? dup.id : idStart + i,
+      symbol: symbol,
+      type: 'dividend',
+      date: date,
+      time: null,
+      tz: null,
+      title: symbol + ' 分红除权日',
+      desc: `分红${item.dividend?' $'+Number(item.dividend).toFixed(2)+'/股':''}`,
+      extra: extra,
+      _fromApi: true,
+    };
+  }).filter(Boolean);
+}
+
+// 合并策略: API 事件替换同 symbol+date+type 的模拟事件，其余保留
+function mergeEvents(mockEvents, apiEvents) {
+  const merged = [...mockEvents];
+
+  // 1. 合并 API 事件：同 symbol+date+type 替换，否则新增
+  apiEvents.forEach(apiEv => {
+    const idx = merged.findIndex(
+      m => m.symbol === apiEv.symbol && m.date === apiEv.date && m.type === apiEv.type
+    );
+    if (idx >= 0) {
+      merged[idx] = { ...apiEv, id: merged[idx].id };
+    } else {
+      merged.push(apiEv);
+    }
+  });
+
+  // 2. 关键：API 数据到达后，移除同 symbol+type 的模拟事件
+  //    模拟事件的日期是编造的，API 才是真实日期，避免假日期残留
+  const apiCoverage = new Set();
+  apiEvents.forEach(e => apiCoverage.add(e.symbol + '|' + e.type));
+
+  for (let i = merged.length - 1; i >= 0; i--) {
+    const e = merged[i];
+    if (!e._fromApi && apiCoverage.has(e.symbol + '|' + e.type)) {
+      merged.splice(i, 1);
+    }
+  }
+
+  return merged;
+}
+
+// 从 API 补全公司名
+async function enrichStockNames(apiEvents) {
+  const syms = [...new Set(apiEvents.map(e => e.symbol))];
+  const unknown = syms.filter(sym => !stocks.find(s => s.symbol === sym));
+  if (unknown.length === 0) return;
+
+  // 限制并发
+  for (const sym of unknown.slice(0, 10)) {
+    try {
+      const profile = await fetchFmpProfile(sym);
+      if (profile) {
+        const existing = stocks.find(s => s.symbol === sym);
+        if (!existing) {
+          stocks.push({
+            symbol: sym,
+            name: profile.companyName || sym,
+            exchange: profile.exchangeShortName || profile.exchange || '',
+            market: profile.exchange && (profile.exchange.includes('NASDAQ') || profile.exchange.includes('NYSE') || profile.exchange.includes('AMEX')) ? '🇺🇸' : '🇺🇸',
+            color: STOCK_COLORS[stocks.length % STOCK_COLORS.length],
+            following: false,
+          });
+        }
+      }
+    } catch(_) {}
+  }
+}
+
+// ═══════════════════ 统一数据拉取 ═══════════════════
+// 核心: Alpha Vantage (主) + FMP (辅) → 合并 → 渲染
+async function fetchAllSources({ silent, errors } = {}) {
+  const badge = document.getElementById('ds-badge');
+  const now = new Date();
+  const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+  const fromStr = fmtDate(from);
+  const toStr = fmtDate(to);
+
+  const allApiEvents = [];
+  let sources = [];
+
+  // ── Tushare: A股财报披露（主源） ──
+  const cnCacheKey = 'tushare_earnings_' + fromStr + '_' + toStr;
+  let cnData = getCache(cnCacheKey);
+  if (!cnData) {
+    try {
+      console.log('🌐 拉取 Tushare A股财报…');
+      cnData = await fetchCnEarnings(fromStr, toStr);
+      console.log('✅ Tushare 返回', cnData.length, '条记录');
+      if (cnData.length) setCache(cnCacheKey, cnData);
+    } catch (err) {
+      console.warn('❌ Tushare:', err.message);
+      if (errors) errors.push('Tushare: ' + err.message);
+    }
+  } else { console.log('📦 Tushare 使用缓存 (' + cnData.length + ' 条)'); }
+  if (cnData && cnData.length) {
+    try {
+      const cnEvents = mapCnToEvents(cnData, events);
+      console.log('🗺️ A股映射为', cnEvents.length, '个事件');
+      enrichStocksFromApi(cnData, '🇨🇳');
+      allApiEvents.push(...cnEvents);
+      sources.push('TS');
+    } catch (err) {
+      console.error('❌ Tushare 映射失败:', err);
+      if (errors) errors.push('Tushare映射: ' + err.message);
+    }
+  }
+
+  // ── Tushare: 业绩预告 ──
+  const fcKey = 'tushare_forecast_' + fromStr;
+  let fcData = getCache(fcKey);
+  if (!fcData) {
+    try {
+      console.log('🌐 拉取 Tushare 业绩预告…');
+      fcData = await fetchCnForecast(fromStr.replace(/-/g, ''));
+      if (fcData.length) setCache(fcKey, fcData);
+    } catch (err) { console.warn('❌ Tushare forecast:', err.message); }
+  }
+  if (fcData && fcData.length) {
+    try {
+      const fcEvents = mapForecastToEvents(fcData, events);
+      console.log('🗺️ 业绩预告映射为', fcEvents.length, '个事件');
+      enrichStocksFromApi(fcData, '🇨🇳');
+      allApiEvents.push(...fcEvents);
+    } catch (err) { console.warn('❌ forecast映射:', err.message); }
+  }
+
+  // ── Finnhub: 美股财报（辅源） ──
+  const usCacheKey = 'finnhub_us_' + fromStr + '_' + toStr;
+  let usData = getCache(usCacheKey);
+  if (!usData) {
+    try {
+      console.log('🌐 拉取 Finnhub 美股财报…');
+      usData = await fetchUsEarnings(fromStr, toStr);
+      console.log('✅ Finnhub 返回', usData.length, '条');
+      if (usData.length) setCache(usCacheKey, usData);
+    } catch (err) {
+      console.warn('❌ Finnhub:', err.message);
+      if (errors) errors.push('Finnhub: ' + err.message);
+    }
+  } else { console.log('📦 Finnhub 使用缓存 (' + usData.length + ' 条)'); }
+  if (usData && usData.length) {
+    try {
+      const usEvents = mapUsToEvents(usData, events);
+      console.log('🗺️ 美股映射为', usEvents.length, '个事件');
+      enrichStocksFromApi(usData, '🇺🇸');
+      allApiEvents.push(...usEvents);
+      sources.push('FH');
+    } catch (err) {
+      console.error('❌ Finnhub 映射失败:', err);
+      if (errors) errors.push('Finnhub映射: ' + err.message);
+    }
+  }
+
+  // ── 合并 ──
+  if (allApiEvents.length) {
+    const merged = mergeEvents(events, allApiEvents);
+    events.length = 0;
+    events.push(...merged);
+
+    const srcLabel = sources.join('+');
+    badge.textContent = srcLabel;
+    badge.className = 'data-source-badge live';
+    badge.title = `${srcLabel} 实时数据 · ${allApiEvents.length} 个 API 事件 · 点击刷新`;
+    return { success: true, sources, count: allApiEvents.length };
+  }
+
+  badge.textContent = '模拟';
+  badge.className = 'data-source-badge mock';
+  badge.title = '无 API 数据，显示模拟数据';
+  return { success: false, sources: [], count: 0 };
+}
+
+// 手动刷新
+async function refreshData() {
+  const spinner = document.getElementById('refresh-spinner');
+  const label = document.getElementById('refresh-label');
+  const btn = document.getElementById('refresh-btn');
+  const badge = document.getElementById('ds-badge');
+
+  btn.disabled = true;
+  spinner.style.display = 'inline-block';
+  label.style.display = 'none';
+  badge.textContent = '加载中…';
+  badge.className = 'data-source-badge loading';
+
+  try {
+    await fetchAllSources({ silent: false });
+    renderAll();
+  } catch (err) {
+    console.error('Refresh error:', err);
+    badge.textContent = '模拟';
+    badge.className = 'data-source-badge mock';
+    badge.title = 'API 拉取失败，显示模拟数据';
+    alert('数据拉取失败: ' + (err.message || '网络错误') + '\n已回退到模拟数据。');
+  } finally {
+    btn.disabled = false;
+    spinner.style.display = 'none';
+    label.style.display = 'inline';
+  }
+}
+
+// 自动初始化: 页面加载时静默拉取
+async function autoFetchIfKey() {
+  const badge = document.getElementById('ds-badge');
+  badge.textContent = '加载中…';
+  badge.className = 'data-source-badge loading';
+  const errs = [];
+  try {
+    const result = await fetchAllSources({ silent: true, errors: errs });
+    if (result.success) {
+      renderAll();
+    } else if (errs.length) {
+      // 有错误但无数据
+      badge.textContent = '错误';
+      badge.className = 'data-source-badge error';
+      badge.title = '数据拉取失败 · 点击查看详情';
+      showError('数据拉取失败', errs.join('<br>'), 8000);
+      renderAll();
+    }
+  } catch (err) {
+    badge.textContent = '错误';
+    badge.className = 'data-source-badge error';
+    badge.title = '数据拉取异常: ' + (err.message || '未知错误');
+    showError('数据拉取异常', (err.message || '未知错误') + '<br>已回退到模拟数据', 8000);
+    renderAll();
+  }
+}
+
+// ═══════════════════ 数据源: Tushare (A股) + Finnhub (美股) ═══════════════════
+// ── 环境检测：Vercel 部署用相对路径，本地开发用 localhost ──
+let API_BASE = '';
+let serverAvailable = true;
+
+async function checkServer() {
+  const isLocalFile = location.protocol === 'file:';
+  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+  if (isLocalFile) {
+    // 从文件系统打开 → 需要 localhost 服务器
+    API_BASE = 'http://localhost:3000';
+    try {
+      const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
+      if (resp.ok) { console.log('✅ 本地服务器已连接'); return true; }
+    } catch (_) {}
+    serverAvailable = false;
+    console.log('⚠️ 本地服务器未启动，将直连 Finnhub');
+    return false;
+  }
+
+  if (isLocalhost) {
+    // localhost 开发 → 服务器可能在其他端口
+    API_BASE = 'http://localhost:3000';
+    try {
+      const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
+      if (resp.ok) { console.log('✅ 本地服务器已连接'); return true; }
+    } catch (_) {}
+    // 如果 localhost:3000 不通，尝试相对路径（可能 Express 在同一个端口）
+    API_BASE = '';
+    try {
+      const resp = await fetch('/api/health', { signal: AbortSignal.timeout(2000) });
+      if (resp.ok) { console.log('✅ 使用相对路径 API'); return true; }
+    } catch (_) {}
+    serverAvailable = false;
+    return false;
+  }
+
+  // Vercel / 生产环境 → 相对路径
+  API_BASE = '';
+  console.log('🌐 Vercel 部署模式，使用相对路径 API');
+  return true;
+}
+
+// ── A股: Tushare 财报披露 ──
+async function fetchCnEarnings(from, to) {
+  if (!serverAvailable) return [];
+  const resp = await fetch(`${API_BASE}/api/earnings?from=${from}&to=${to}`);
+  if (!resp.ok) throw new Error('Tushare ' + resp.status);
+  return resp.json();
+}
+
+// ── A股: Tushare 业绩预告 ──
+async function fetchCnForecast(annDate) {
+  if (!serverAvailable) return [];
+  const resp = await fetch(`${API_BASE}/api/forecast?ann_date=${annDate}`);
+  if (resp.ok) return resp.json();
+  return [];
+}
+
+// ── 美股: Finnhub ──
+async function fetchUsEarnings(from, to) {
+  }
+  const resp = await fetch(`${API_BASE}/api/us-earnings?from=${from}&to=${to}`);
+  if (!resp.ok) throw new Error('Finnhub ' + resp.status);
+  return resp.json();
+}
+
+// ── Tushare disclosure_date → 事件 ──
+function mapCnToEvents(raw, existingEvents) {
+  const idStart = Date.now() + 300000;
+  const mapped = [];
+  for (const item of raw) {
+    const code = (item.ts_code || '').replace(/\.(SH|SZ|BJ)$/, '');
+    const date = item.actual_date || item.pre_date || item.ann_date;
+    if (!code || !date) continue;
+    const y = date.slice(0,4), m = date.slice(4,6), d = date.slice(6,8);
+    const dateStr = y + '-' + m + '-' + d;
+    if (isNaN(new Date(dateStr).getTime())) continue;
+    const q = Math.ceil(parseInt(m) / 3);
+    const dup = existingEvents && existingEvents.find(e => e.symbol === code && e.date === dateStr && e.type === 'earnings');
+    const extra = {};
+    if (item.end_date) extra['财报周期截止'] = item.end_date.slice(0,4)+'-'+item.end_date.slice(4,6)+'-'+item.end_date.slice(6,8);
+    const st = stocks.find(s => s.symbol === code);
+    const cnName = st ? st.name : code;
+    mapped.push({
+      id: dup ? dup.id : idStart + mapped.length, symbol: code, type: 'earnings',
+      date: dateStr, time: null, tz: 'CST',
+      title: `Q${q} 财报披露`, desc: `${cnName} ${q}季度财报披露日`,
+      extra, _fromApi: true, _source: 'ts',
+    });
+  }
+  return mapped;
+}
+
+// ── Tushare forecast → 事件 ──
+function mapForecastToEvents(raw, existingEvents) {
+  const idStart = Date.now() + 400000;
+  const TYPE_MAP = { '预增':'预增','略增':'略增','扭亏':'扭亏','预减':'预减','略减':'略减','续盈':'续盈','首亏':'首亏','续亏':'续亏' };
+  const mapped = [];
+  for (const item of raw) {
+    const code = (item.ts_code || '').replace(/\.(SH|SZ|BJ)$/, '');
+    const dateStr = (item.ann_date || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3');
+    if (!code || !dateStr || isNaN(new Date(dateStr).getTime())) continue;
+    const dup = existingEvents && existingEvents.find(e => e.symbol === code && e.date === dateStr && e.type === 'forecast');
+    const extra = {};
+    if (item.type) extra['预告类型'] = TYPE_MAP[item.type] || item.type;
+    if (item.p_change_min != null && item.p_change_max != null) extra['净利润变动'] = item.p_change_min + '% ~ ' + item.p_change_max + '%';
+    if (item.summary) extra['摘要'] = (item.summary || '').slice(0, 80);
+    const st = stocks.find(s => s.symbol === code);
+    const cnName = st ? st.name : code;
+    mapped.push({
+      id: dup ? dup.id : idStart + mapped.length, symbol: code, type: 'forecast',
+      date: dateStr, time: null, tz: 'CST',
+      title: '业绩预告', desc: `${cnName} ${extra['预告类型'] || '业绩预告'}${extra['净利润变动'] ? ' ' + extra['净利润变动'] : ''}`,
+      extra, _fromApi: true, _source: 'ts',
+    });
+  }
+  return mapped;
+}
+
+// ── Finnhub → 事件（美股） ──
+function mapUsToEvents(raw, existingEvents) {
+  const idStart = Date.now() + 200000;
+  return raw.map((item, i) => {
+    const s = item.symbol, date = item.date;
+    const timeStr = item.hour === 'bmo' ? '08:30' : item.hour === 'amc' ? '16:30' : null;
+    const d = new Date(date); const q = item.quarter || Math.ceil((d.getMonth()+1)/3);
+    const dup = existingEvents && existingEvents.find(e => e.symbol === s && e.date === date && e.type === 'earnings');
+    const extra = {};
+    if (item.epsEstimate) extra['预期EPS'] = '$'+Number(item.epsEstimate).toFixed(2);
+    if (item.revenueEstimate>0) { const r=Number(item.revenueEstimate); extra['预期营收']=r>=1e9?'$'+(r/1e9).toFixed(1)+'B':'$'+(r/1e6).toFixed(0)+'M'; }
+    const tl = item.hour==='bmo'?'（盘前）':item.hour==='amc'?'（盘后）':'';
+    const cn = getChineseName(s);
+    return {
+      id: dup?dup.id:idStart+i, symbol:s, type:'earnings', date, time:timeStr, tz:'美东',
+      title: `Q${q} 财报发布`, desc: `${cn||s} 季度财报${tl}${item.epsEstimate?' · 预期EPS $'+Number(item.epsEstimate).toFixed(2):''}`,
+      extra, _fromApi:true, _source:'fh',
+    };
+  });
+}
+
+// ── 股票库补全（A股+美股） ──
+function enrichStocksFromApi(apiEvents, market) {
+  let added = 0;
+  const knownSyms = new Set(stocks.map(s => s.symbol));
+  for (const e of apiEvents) {
+    if (added >= 50) break;
+    const sym = e.symbol || (e.ts_code || '').replace(/\.(SH|SZ|BJ)$/, '');
+    if (!sym || knownSyms.has(sym)) continue;
+    const cnName = getChineseName(sym);
+    stocks.push({
+      symbol: sym, name: cnName || sym,
+      exchange: market === '🇨🇳' ? (sym.startsWith('6')?'上交所':sym.startsWith('0')||sym.startsWith('3')?'深交所':'') : '',
+      market, color: STOCK_COLORS[stocks.length % STOCK_COLORS.length], following: false,
+    });
+    knownSyms.add(sym); added++;
+  }
+  if (added) console.log('📋 新增', added, '只' + market + '股票');
+}
+
+
+// 从 FMP 数据补全股票库 — 优先使用中文名
+async function enrichStockNames(apiEvents) {
+  const syms = [...new Set(apiEvents.map(e => e.symbol))];
+  const unknown = syms.filter(sym => !stocks.find(s => s.symbol === sym));
+  if (unknown.length === 0) return;
+
+  for (const sym of unknown.slice(0, 10)) {
+    // 先检查中文名映射
+    const cnName = getChineseName(sym);
+    if (cnName) {
+      stocks.push({
+        symbol: sym, name: cnName, exchange: '', market: '🇺🇸',
+        color: STOCK_COLORS[stocks.length % STOCK_COLORS.length], following: false,
+      });
+      continue;
+    }
+    // 否则尝试 API 查公司名
+    try {
+      const profile = await fetchFmpProfile(sym);
+      if (profile) {
+        stocks.push({
+          symbol: sym,
+          name: getChineseName(sym) || profile.companyName || sym,
+          exchange: profile.exchangeShortName || profile.exchange || '',
+          market: '🇺🇸',
+          color: STOCK_COLORS[stocks.length % STOCK_COLORS.length],
+          following: false,
+        });
+      }
+    } catch(_) {}
+  }
+}
+
+// ═══════════════════ FEED ═══════════════════
+function setFeedFilter(f) {
+  feedFilter = f;
+  document.querySelectorAll('#page-feed .subtab').forEach((b,i) => {
+    b.classList.toggle('active', ['all','earnings','product','dividend'][i] === f);
+  });
+  renderFeed();
+}
+
+function renderFeed() {
+  const items = feedFilter==='all' ? feedItems : feedItems.filter(f => f.type===feedFilter);
+  document.getElementById('feed-list').innerHTML = items.map(f => {
+    const st = stocks.find(s => s.symbol===f.symbol);
+    const meta = EVENT_COLORS[f.type];
+    return `<div class="feed-card" onclick="viewStock('${f.symbol}')">
+      <div class="feed-top">
+        <div class="feed-avatar" style="background:${st?st.color:meta.hex};">${f.symbol.slice(0,2)}</div>
+        <div>
+          <div class="feed-name">${f.symbol} ${st?st.market:''}</div>
+          <div class="feed-time-ago">${f.time}</div>
+        </div>
+      </div>
+      <span class="feed-tag" style="background:${meta.bg};color:${meta.hex};">${meta.icon} ${meta.name}</span>
+      <div class="feed-title">${f.title}</div>
+      <div class="feed-desc">${f.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════ SEARCH ═══════════════════
+function showSearch() {
+  document.getElementById('search-overlay').classList.add('show');
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+  renderHotTags();
+  setTimeout(() => document.getElementById('search-input').focus(), 200);
+}
+
+function closeSearch() {
+  document.getElementById('search-overlay').classList.remove('show');
+}
+
+function renderHotTags() {
+  const syms = ['AAPL','TSLA','GOOGL','MSFT','NVDA','600519','0700','3690','002594'];
+  document.getElementById('hot-tags').innerHTML = syms.map(sym => {
+    const st = stocks.find(s => s.symbol===sym);
+    const label = st ? (st.name + ' ' + st.symbol) : sym;
+    return `<span class="hot-tag ${st&&st.following?'following':''}" onclick="toggleFollow('${sym}')">${label} ${st&&st.following?'✓':'+'}</span>`;
+  }).join('');
+}
+
+let searchTimer = null;
+
+function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  const qLower = q.toLowerCase();
+  const ctn = document.getElementById('search-results');
+  if (!q) { ctn.innerHTML=''; return; }
+
+  // ── 第 1 步：本地搜索（中文名、代码、CN_NAME_MAP） ──
+  const localRes = stocks.filter(s => {
+    if (s.symbol.toLowerCase().includes(qLower)) return true;
+    if (s.name.includes(q)) return true;
+    for (const [sym, cn] of Object.entries(CN_NAME_MAP)) {
+      if ((sym.toLowerCase().includes(qLower) || cn.includes(q)) && s.symbol === sym) return true;
+    }
+    return false;
+  });
+
+  const curCnt = stocks.filter(s => s.following).length;
+  const atLimit = !isPremium && curCnt >= MAX_FREE_STOCKS;
+
+  function renderResults(res, showApiHint) {
+    if (!res.length) {
+      ctn.innerHTML = '<div class="ev-empty">🔍 未找到匹配股票<br><span style="font-size:11px;">试试输入中文名（如「特斯拉」）或英文代码</span></div>';
+      return;
+    }
+    ctn.innerHTML = res.map(s => {
+      const initials = (s.name && s.name.length >= 2) ? s.name.slice(0, 2) : s.symbol.slice(0, 2);
+      return `<div class="stock-row" onclick="toggleFollow('${s.symbol}')">
+        <div class="sr-avatar" style="background:${s.color||STOCK_COLORS[0]};font-size:11px;">${initials}</div>
+        <div class="sr-info">
+          <div class="sr-symbol">${s.name||s.symbol} <span class="sr-market">${s.market||''} ${s.exchange||''}</span></div>
+          <div class="sr-name">${s.symbol}</div>
+        </div>
+        <button class="sr-btn ${s.following?'following':''}" style="${!s.following && atLimit ? 'background:var(--clr-past);':''}">${s.following?'✓':'+'}</button>
+      </div>`;
+    }).join('');
+    if (showApiHint) {
+      ctn.innerHTML += '<div style="padding:6px 18px;font-size:10px;color:var(--text-muted);text-align:center;">— 来自 Finnhub 实时搜索 —</div>';
+    }
+    if (atLimit && !isPremium) {
+      ctn.innerHTML += `<div style="padding:10px 18px;font-size:11px;color:var(--clr-earnings);text-align:center;cursor:pointer;" onclick="showUpgrade()">⚠️ 免费用户最多关注 ${MAX_FREE_STOCKS} 只股票 · 点击升级 →</div>`;
+    }
+  }
+
+  // 本地有结果 → 直接显示
+  if (localRes.length > 0) {
+    renderResults(localRes, false);
+    return;
+  }
+
+  // ── 第 2 步：本地无结果 → 调用 Tushare API (A股) 实时搜索 ──
+  ctn.innerHTML = '<div class="ev-empty"><span class="spinner"></span> 正在搜索全球股票…</div>';
+
+  // 防抖 300ms
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(async () => {
+    try {
+      let apiRes;
+      if (serverAvailable) {
+        const url = `${API_BASE}/api/search?q=${encodeURIComponent(q)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('search failed');
+        apiRes = await resp.json();
+      } else {
+        // 离线模式：尝试相对路径 API
+        const url = `/api/search?q=${encodeURIComponent(q)}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error('search failed');
+        apiRes = await resp.json();
+      }
+
+      if (!apiRes || !apiRes.length) {
+        ctn.innerHTML = '<div class="ev-empty">🔍 未找到匹配股票<br><span style="font-size:11px;">请检查拼写后重试</span></div>';
+        return;
+      }
+
+      // 将搜索结果合并到本地 stocks（方便后续关注操作）
+      apiRes.forEach(r => {
+        if (!stocks.find(s => s.symbol === r.symbol)) {
+          const cnName = getChineseName(r.symbol);
+          stocks.push({
+            symbol: r.symbol,
+            name: cnName || r.name || r.symbol,
+            exchange: r.exchange || '',
+            market: '🇺🇸',
+            color: STOCK_COLORS[stocks.length % STOCK_COLORS.length],
+            following: false,
+          });
+        }
+      });
+
+      // 从已合并的 stocks 中取结果（保证有 following 状态和中文名）
+      const mergedRes = apiRes.map(r => stocks.find(s => s.symbol === r.symbol)).filter(Boolean);
+      renderResults(mergedRes, true);
+    } catch (err) {
+      ctn.innerHTML = `<div class="ev-empty">⚠️ 搜索失败<br><span style="font-size:11px;">${err.message||'网络错误'}，请重试</span></div>`;
+    }
+  }, 300);
+}
+
+function toggleFollow(sym) {
+  const st = stocks.find(s => s.symbol===sym);
+  if (!st) return;
+
+  // 如果要关注（非取关），检查免费用户上限
+  if (!st.following && !isPremium) {
+    const curCnt = stocks.filter(s => s.following).length;
+    if (curCnt >= MAX_FREE_STOCKS) {
+      showUpgrade();
+      return;
+    }
+  }
+
+  st.following = !st.following;
+  renderHotTags();
+  renderWL();
+  renderCal();
+  renderEvents();
+  doSearch();
+  updateProfileStats();
+}
+
+// ═══════════════════ MEMBERSHIP ═══════════════════
+function showUpgrade() {
+  document.getElementById('upgrade-overlay').classList.add('show');
+}
+
+function closeUpgrade(e) {
+  if (e && e.target !== document.getElementById('upgrade-overlay')) return;
+  document.getElementById('upgrade-overlay').classList.remove('show');
+}
+
+function doUpgrade() {
+  isPremium = true;
+  try { localStorage.setItem('stockcal-premium', '1'); } catch(_) {}
+  document.getElementById('upgrade-overlay').classList.remove('show');
+  updateMembershipUI();
+  renderAll();
+}
+
+function updateMembershipUI() {
+  const card = document.getElementById('membership-card');
+  const badge = document.getElementById('member-badge');
+  const title = document.getElementById('member-title');
+  const desc = document.getElementById('member-desc');
+  const btn = document.getElementById('member-btn');
+  const inline = document.getElementById('membership-badge-inline');
+
+  if (isPremium) {
+    card.classList.add('premium');
+    badge.textContent = 'PREMIUM';
+    title.textContent = '高级会员';
+    desc.textContent = '无限关注 · 全部功能已解锁';
+    btn.textContent = '👑 已开通';
+    btn.onclick = null;
+    inline.innerHTML = '<span style="display:inline-block;background:linear-gradient(135deg,#C9A87C,#D4AF8D);color:#fff;padding:2px 10px;border-radius:8px;font-size:10px;font-weight:700;">👑 PREMIUM</span>';
+    document.getElementById('profile-name').textContent = 'VIP投资者';
+    document.getElementById('profile-avatar').textContent = '👑';
+  } else {
+    card.classList.remove('premium');
+    badge.textContent = 'FREE';
+    title.textContent = '免费用户';
+    desc.textContent = `可关注 ${MAX_FREE_STOCKS} 只股票 · 基础提醒`;
+    btn.textContent = '✨ 升级会员';
+    btn.onclick = showUpgrade;
+    inline.innerHTML = '';
+    document.getElementById('profile-name').textContent = '投资者';
+    document.getElementById('profile-avatar').textContent = '📈';
+  }
+}
+
+// ═══════════════════ BACKGROUND COLOR ═══════════════════
+function setBg(idx, silent) {
+  currentBg = idx;
+  // 清除所有背景类
+  for (let i = 0; i <= 7; i++) document.body.classList.remove('bg-' + i);
+  // 应用新背景
+  document.body.classList.add('bg-' + idx);
+  // 更新选择器
+  document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
+  const swatch = document.querySelector(`.bg-swatch[data-bg="${idx}"]`);
+  if (swatch) swatch.classList.add('active');
+  if (!silent) {
+    try { localStorage.setItem('stockcal-bg', idx); } catch(_) {}
+    // 非会员切换背景时提示升级
+    if (!isPremium) {
+      setTimeout(() => showUpgrade(), 500);
+    }
+  }
+}
+
+// ═══════════════════ TAB ═══════════════════
+function switchTab(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  document.querySelector(`.tab[data-page="${page}"]`).classList.add('active');
+  if (page==='watchlist') renderWL();
+  if (page==='feed') renderFeed();
+}
+
+// ═══════════════════ SETTINGS ═══════════════════
+function toggleSwitch(el) {
+  el.querySelector('.toggle').classList.toggle('on');
+}
+
+function updateProfileStats() {
+  const fwCnt = stocks.filter(s => s.following).length;
+  const evCnt = events.length;
+  const limitText = isPremium ? '' : ` / ${MAX_FREE_STOCKS} 上限`;
+  document.getElementById('profile-stats').textContent =
+    `关注 ${fwCnt} 只股票${limitText} · 本月 ${evCnt} 个事件`;
+  updateMembershipUI();
+}
+
+// ═══════════════════ UTILS ═══════════════════
+function pad(n) { return String(n).padStart(2,'0'); }
+function fmtDate(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function weekdayCN(w) { return ['','周一','周二','周三','周四','周五','周六','周日'][w]; }
+
+// Touch swipe for month
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const d = e.changedTouches[0].clientX - tx;
+  if (Math.abs(d) > 60 && calView===0) changeMonth(d > 0 ? -1 : 1);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') { closeSheet(); closeSearch(); closeImport(); closeUpgrade(); }
+  if (e.key==='ArrowLeft' && calView===0) changeMonth(-1);
+  if (e.key==='ArrowRight' && calView===0) changeMonth(1);
+});
+</script>
+</body>
+</html>
