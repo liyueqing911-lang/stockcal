@@ -640,8 +640,8 @@ body.dark.bg-7 { --bg: #1A1C1E; --bg-secondary: #242628; --card: #2C2E30; --card
       </div>
       <div class="setting-group">
         <div class="setting-row" style="flex-direction:column;align-items:flex-start;gap:6px;border-bottom:none;">
-          <span style="font-size:14px;color:var(--text);">🔑 Tushare API (A股)</span>
-          <div class="api-status" id="av-api-status" style="color:var(--clr-dividend);">✅ 已配置 · A股财报披露+业绩预告</div>
+          <span style="font-size:14px;color:var(--text);">🔑 东方财富 (A股)</span>
+          <div class="api-status" id="av-api-status" style="color:var(--clr-dividend);">✅ 已配置 · A股财报+业绩预告 · 免费</div>
         </div>
       </div>
       <div class="setting-group">
@@ -1640,25 +1640,25 @@ async function fetchAllSources({ silent, errors } = {}) {
   let cnData = getCache(cnCacheKey);
   if (!cnData) {
     try {
-      console.log('🌐 拉取 Tushare A股财报…');
+      console.log('🌐 拉取 东方财富 A股财报…');
       cnData = await fetchCnEarnings(fromStr, toStr);
-      console.log('✅ Tushare 返回', cnData.length, '条记录');
+      console.log('✅ 东方财富 返回', cnData.length, '条记录');
       if (cnData.length) setCache(cnCacheKey, cnData);
     } catch (err) {
-      console.warn('❌ Tushare:', err.message);
-      if (errors) errors.push('Tushare: ' + err.message);
+      console.warn('❌ 东方财富:', err.message);
+      if (errors) errors.push('东方财富: ' + err.message);
     }
-  } else { console.log('📦 Tushare 使用缓存 (' + cnData.length + ' 条)'); }
+  } else { console.log('📦 东方财富 使用缓存 (' + cnData.length + ' 条)'); }
   if (cnData && cnData.length) {
     try {
       const cnEvents = mapCnToEvents(cnData, events);
       console.log('🗺️ A股映射为', cnEvents.length, '个事件');
       enrichStocksFromApi(cnData, '🇨🇳');
       allApiEvents.push(...cnEvents);
-      sources.push('TS');
+      sources.push('EM');
     } catch (err) {
-      console.error('❌ Tushare 映射失败:', err);
-      if (errors) errors.push('Tushare映射: ' + err.message);
+      console.error('❌ 东方财富映射失败:', err);
+      if (errors) errors.push('东方财富映射: ' + err.message);
     }
   }
 
@@ -1667,10 +1667,10 @@ async function fetchAllSources({ silent, errors } = {}) {
   let fcData = getCache(fcKey);
   if (!fcData) {
     try {
-      console.log('🌐 拉取 Tushare 业绩预告…');
-      fcData = await fetchCnForecast(fromStr.replace(/-/g, ''));
+      console.log('🌐 拉取 东方财富 业绩预告…');
+      fcData = await fetchCnForecast(fromStr, toStr);
       if (fcData.length) setCache(fcKey, fcData);
-    } catch (err) { console.warn('❌ Tushare forecast:', err.message); }
+    } catch (err) { console.warn('❌ 东方财富 forecast:', err.message); }
   }
   if (fcData && fcData.length) {
     try {
@@ -1827,78 +1827,78 @@ async function checkServer() {
   return true;
 }
 
-// ── A股: Tushare 财报披露 ──
-async function fetchCnEarnings(from, to) {
-  if (!serverAvailable) return [];
-  const resp = await fetch(`${API_BASE}/api/earnings?from=${from}&to=${to}`);
-  if (!resp.ok) throw new Error('Tushare ' + resp.status);
-  return resp.json();
-}
-
-// ── A股: Tushare 业绩预告 ──
-async function fetchCnForecast(annDate) {
-  if (!serverAvailable) return [];
-  const resp = await fetch(`${API_BASE}/api/forecast?ann_date=${annDate}`);
-  if (resp.ok) return resp.json();
-  return [];
-}
-
-// ── 美股: Finnhub ──
-async function fetchUsEarnings(from, to) {
+  // ── A股: 东方财富财报披露 ──
+  async function fetchCnEarnings(from, to) {
+    if (!serverAvailable) return [];
+    const resp = await fetch(`${API_BASE}/api/earnings?from=${from}&to=${to}`);
+    if (!resp.ok) throw new Error('Eastmoney ' + resp.status);
+    return resp.json();
   }
-  const resp = await fetch(`${API_BASE}/api/us-earnings?from=${from}&to=${to}`);
-  if (!resp.ok) throw new Error('Finnhub ' + resp.status);
-  return resp.json();
-}
 
-// ── Tushare disclosure_date → 事件 ──
-function mapCnToEvents(raw, existingEvents) {
-  const idStart = Date.now() + 300000;
-  const mapped = [];
-  for (const item of raw) {
-    const code = (item.ts_code || '').replace(/\.(SH|SZ|BJ)$/, '');
-    const date = item.actual_date || item.pre_date || item.ann_date;
-    if (!code || !date) continue;
-    const y = date.slice(0,4), m = date.slice(4,6), d = date.slice(6,8);
-    const dateStr = y + '-' + m + '-' + d;
-    if (isNaN(new Date(dateStr).getTime())) continue;
-    const q = Math.ceil(parseInt(m) / 3);
-    const dup = existingEvents && existingEvents.find(e => e.symbol === code && e.date === dateStr && e.type === 'earnings');
-    const extra = {};
-    if (item.end_date) extra['财报周期截止'] = item.end_date.slice(0,4)+'-'+item.end_date.slice(4,6)+'-'+item.end_date.slice(6,8);
-    const st = stocks.find(s => s.symbol === code);
-    const cnName = st ? st.name : code;
-    mapped.push({
-      id: dup ? dup.id : idStart + mapped.length, symbol: code, type: 'earnings',
-      date: dateStr, time: null, tz: 'CST',
-      title: `Q${q} 财报披露`, desc: `${cnName} ${q}季度财报披露日`,
-      extra, _fromApi: true, _source: 'ts',
-    });
+  // ── A股: 东方财富业绩预告 ──
+  async function fetchCnForecast(from, to) {
+    if (!serverAvailable) return [];
+    const resp = await fetch(`${API_BASE}/api/forecast?from=${from}&to=${to}`);
+    if (resp.ok) return resp.json();
+    return [];
+  }
+
+  // ── 美股: Finnhub ──
+  async function fetchUsEarnings(from, to) {
+    if (!serverAvailable) return [];
+    const resp = await fetch(`${API_BASE}/api/us-earnings?from=${from}&to=${to}`);
+    if (!resp.ok) throw new Error('Finnhub ' + resp.status);
+    return resp.json();
+  }
+
+  // ── 东方财富 → 事件（A股财报，自带中文名） ──
+  function mapCnToEvents(raw, existingEvents) {
+    const idStart = Date.now() + 300000;
+    const mapped = [];
+    for (const item of raw) {
+      const code = item.symbol;
+      const date = item.notice_date;
+      if (!code || !date) continue;
+      const d = new Date(date);
+      if (isNaN(d.getTime())) continue;
+      const q = Math.ceil((d.getMonth() + 1) / 3);
+      const dup = existingEvents && existingEvents.find(e => e.symbol === code && e.date === date && e.type === 'earnings');
+      const extra = {};
+      if (item.eps != null) extra['每股收益'] = '¥' + Number(item.eps).toFixed(2);
+      const cnName = item.name || code;
+      mapped.push({
+        id: dup ? dup.id : idStart + mapped.length, symbol: code, type: 'earnings',
+        date: date, time: null, tz: 'CST',
+        title: item.period || `Q${q} 财报发布`,
+        desc: `${cnName} ${item.period || q+'季度财报'}${item.eps ? ' EPS ¥'+Number(item.eps).toFixed(2) : ''}`,
+        extra, _fromApi: true, _source: 'em',
+      });
+    }
+    return mapped;
   }
   return mapped;
 }
 
-// ── Tushare forecast → 事件 ──
+// ── 东方财富 forecast → 事件 ──
 function mapForecastToEvents(raw, existingEvents) {
   const idStart = Date.now() + 400000;
   const TYPE_MAP = { '预增':'预增','略增':'略增','扭亏':'扭亏','预减':'预减','略减':'略减','续盈':'续盈','首亏':'首亏','续亏':'续亏' };
   const mapped = [];
   for (const item of raw) {
-    const code = (item.ts_code || '').replace(/\.(SH|SZ|BJ)$/, '');
-    const dateStr = (item.ann_date || '').replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3');
-    if (!code || !dateStr || isNaN(new Date(dateStr).getTime())) continue;
-    const dup = existingEvents && existingEvents.find(e => e.symbol === code && e.date === dateStr && e.type === 'forecast');
+    const code = item.symbol;
+    const date = item.notice_date;
+    if (!code || !date || isNaN(new Date(date).getTime())) continue;
+    const dup = existingEvents && existingEvents.find(e => e.symbol === code && e.date === date && e.type === 'forecast');
     const extra = {};
-    if (item.type) extra['预告类型'] = TYPE_MAP[item.type] || item.type;
-    if (item.p_change_min != null && item.p_change_max != null) extra['净利润变动'] = item.p_change_min + '% ~ ' + item.p_change_max + '%';
+    if (item.predict_type) extra['预告类型'] = TYPE_MAP[item.predict_type] || item.predict_type;
+    if (item.amp_lower != null && item.amp_upper != null) extra['净利润变动'] = item.amp_lower + '% ~ ' + item.amp_upper + '%';
     if (item.summary) extra['摘要'] = (item.summary || '').slice(0, 80);
-    const st = stocks.find(s => s.symbol === code);
-    const cnName = st ? st.name : code;
+    const cnName = item.name || code;
     mapped.push({
       id: dup ? dup.id : idStart + mapped.length, symbol: code, type: 'forecast',
-      date: dateStr, time: null, tz: 'CST',
+      date: date, time: null, tz: 'CST',
       title: '业绩预告', desc: `${cnName} ${extra['预告类型'] || '业绩预告'}${extra['净利润变动'] ? ' ' + extra['净利润变动'] : ''}`,
-      extra, _fromApi: true, _source: 'ts',
+      extra, _fromApi: true, _source: 'em',
     });
   }
   return mapped;
@@ -1931,7 +1931,7 @@ function enrichStocksFromApi(apiEvents, market) {
   const knownSyms = new Set(stocks.map(s => s.symbol));
   for (const e of apiEvents) {
     if (added >= 50) break;
-    const sym = e.symbol || (e.ts_code || '').replace(/\.(SH|SZ|BJ)$/, '');
+    const sym = e.symbol || '';
     if (!sym || knownSyms.has(sym)) continue;
     const cnName = getChineseName(sym);
     stocks.push({
@@ -2080,7 +2080,7 @@ function doSearch() {
     return;
   }
 
-  // ── 第 2 步：本地无结果 → 调用 Tushare API (A股) 实时搜索 ──
+  // ── 第 2 步：本地无结果 → 调用 东方财富 (A股) 实时搜索 ──
   ctn.innerHTML = '<div class="ev-empty"><span class="spinner"></span> 正在搜索全球股票…</div>';
 
   // 防抖 300ms
