@@ -917,6 +917,23 @@ function followedEvents() {
   return events.filter(e => syms.has(e.symbol));
 }
 
+// ═══════════════════ 首次配置 ═══════════════════
+function promptForFHKey() {
+  if (getFHKey()) return true; // 已有 key
+  const key = prompt(
+    '📈 欢迎使用 StockCal 炒股日历！\n\n' +
+    '请输入 Finnhub API Key 以获取美股财报数据：\n' +
+    '(免费获取: https://finnhub.io/register)\n\n' +
+    '留空则仅显示 A 股数据（东方财富）',
+    ''
+  );
+  if (key && key.trim()) {
+    localStorage.setItem('stockcal-fh-key', key.trim());
+    return true;
+  }
+  return false;
+}
+
 // ═══════════════════ INIT ═══════════════════
 document.addEventListener('DOMContentLoaded', async () => {
   loadPrefs();
@@ -924,8 +941,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateStatusTime();
   setInterval(updateStatusTime, 60000);
   renderAll();
-  // 检测本地服务器 → 拉取数据
-  await checkServer();
+  // 首次使用提示输入 Finnhub Key（可选，跳过则仅显示 A 股）
+  promptForFHKey();
+  // 直接拉取数据（纯静态，无需服务器）
   autoFetchIfKey();
 });
 
@@ -1445,31 +1463,16 @@ function setCache(name, data) {
 async function fetchFmpEarnings(from, to) {
   const key = getApiKey();
   if (!key) return [];
-
-  if (serverAvailable) {
-    const url = `${API_BASE}/api/fmp/earnings?from=${from}&to=${to}&apikey=${key}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`FMP Server ${resp.status}`);
-    return resp.json();
-  }
-  // 兜底直连
   const url = `https://financialmodelingprep.com/api/v3/earning_calendar?from=${from}&to=${to}&apikey=${key}`;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`FMP ${resp.status}`);
   return resp.json();
 }
 
-// 获取 FMP 分红日历（服务器优先）
+// 获取 FMP 分红日历
 async function fetchFmpDividends(from, to) {
   const key = getApiKey();
   if (!key) return [];
-
-  if (serverAvailable) {
-    const url = `${API_BASE}/api/fmp/dividends?from=${from}&to=${to}&apikey=${key}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error(`FMP Server ${resp.status}`);
-    return resp.json();
-  }
   const url = `https://financialmodelingprep.com/api/v3/stock_dividend_calendar?from=${from}&to=${to}&apikey=${key}`;
   const resp = await fetch(url);
   if (!resp.ok) throw new Error(`FMP ${resp.status}`);
@@ -1783,84 +1786,90 @@ async function autoFetchIfKey() {
   }
 }
 
-// ═══════════════════ 数据源: Tushare (A股) + Finnhub (美股) ═══════════════════
-// ── 环境检测：Vercel 部署用相对路径，本地开发用 localhost ──
-let API_BASE = '';
-let serverAvailable = true;
+// ═══════════════════ 纯静态：直连东方财富 + Finnhub API ═══════════════════
+// 无需任何后端服务器，可直接部署到 GitHub Pages / OSS / CDN
+const EM_BASE = 'https://datacenter.eastmoney.com/securities/api/data/v1/get';
+const FH_BASE = 'https://finnhub.io/api/v1';
+const UA = 'Mozilla/5.0 (compatible; StockCal/3.0)';
 
-async function checkServer() {
-  const isLocalFile = location.protocol === 'file:';
-  const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-
-  if (isLocalFile) {
-    // 从文件系统打开 → 需要 localhost 服务器
-    API_BASE = 'http://localhost:3000';
-    try {
-      const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
-      if (resp.ok) { console.log('✅ 本地服务器已连接'); return true; }
-    } catch (_) {}
-    serverAvailable = false;
-    console.log('⚠️ 本地服务器未启动，将直连 Finnhub');
-    return false;
-  }
-
-  if (isLocalhost) {
-    // localhost 开发 → 服务器可能在其他端口
-    API_BASE = 'http://localhost:3000';
-    try {
-      const resp = await fetch(`${API_BASE}/api/health`, { signal: AbortSignal.timeout(2000) });
-      if (resp.ok) { console.log('✅ 本地服务器已连接'); return true; }
-    } catch (_) {}
-    // 如果 localhost:3000 不通，尝试相对路径（可能 Express 在同一个端口）
-    API_BASE = '';
-    try {
-      const resp = await fetch('/api/health', { signal: AbortSignal.timeout(2000) });
-      if (resp.ok) { console.log('✅ 使用相对路径 API'); return true; }
-    } catch (_) {}
-    serverAvailable = false;
-    return false;
-  }
-
-  // CloudBase / Vercel 等生产环境
-  // 若用户配置了 CloudBase 环境 ID，使用云函数 HTTP 触发器
-  const cbEnv = localStorage.getItem('stockcal-cb-env') || '';
-  if (cbEnv && (location.hostname.includes('tcloudbaseapp.com') || location.hostname.includes('cloudbase.net'))) {
-    API_BASE = `https://${cbEnv}.service.tcloudbase.com`;
-    console.log('🌐 CloudBase 部署模式，使用云函数 API');
-  } else if (location.hostname.includes('vercel.app')) {
-    API_BASE = '';
-    console.log('🌐 Vercel 部署模式，使用相对路径 API');
-  } else {
-    // 其他生产环境（如自建 CDN）→ 使用 Vercel 作为 API 后端
-    API_BASE = 'https://stockcal-eight.vercel.app';
-    console.log('🌐 外部部署，API 路由到 Vercel');
-  }
-  return true;
+// Finnhub Key 从 localStorage 读取（首次使用弹窗提示输入，不留存源码）
+function getFHKey() {
+  return localStorage.getItem('stockcal-fh-key') || '';
 }
 
-  // ── A股: 东方财富财报披露 ──
-  async function fetchCnEarnings(from, to) {
-    if (!serverAvailable) return [];
-    const resp = await fetch(`${API_BASE}/api/earnings?from=${from}&to=${to}`);
-    if (!resp.ok) throw new Error('Eastmoney ' + resp.status);
-    return resp.json();
-  }
+// ── A股: 东方财富财报（直连，无需服务器） ──
+async function fetchCnEarnings(from, to) {
+  // 先拉主报表
+  let rows = await fetchEastmoneyMain(from, to);
+  // 空则兜底业绩预告
+  if (!rows.length) rows = await fetchEastmoneyForecast(from, to);
+  return rows;
+}
 
-  // ── A股: 东方财富业绩预告 ──
-  async function fetchCnForecast(from, to) {
-    if (!serverAvailable) return [];
-    const resp = await fetch(`${API_BASE}/api/forecast?from=${from}&to=${to}`);
-    if (resp.ok) return resp.json();
-    return [];
+async function fetchEastmoneyMain(from, to) {
+  const allRows = [];
+  let page = 1;
+  while (page <= 3) {
+    const filter = `(NOTICE_DATE>='${from}')(NOTICE_DATE<='${to}')`;
+    const url = `${EM_BASE}?reportName=RPT_LICO_FN_CPD&columns=SECURITY_CODE,SECURITY_NAME_ABBR,NOTICE_DATE,REPORTDATE,DATATYPE,BASIC_EPS,PARENT_NETPROFIT&pageNumber=${page}&pageSize=500&sortColumns=NOTICE_DATE&sortTypes=1&source=WEB&client=WEB&filter=${encodeURIComponent(filter)}`;
+    try {
+      const resp = await fetch(url, { headers: { 'User-Agent': UA } });
+      if (!resp.ok) break;
+      const body = await resp.json();
+      if (!body.success) break;
+      const data = body.result?.data || [];
+      if (!data.length) break;
+      allRows.push(...data.map(r => ({
+        symbol: r.SECURITY_CODE, name: r.SECURITY_NAME_ABBR,
+        notice_date: r.NOTICE_DATE?.slice(0,10), report_date: r.REPORTDATE?.slice(0,10),
+        period: r.DATATYPE, eps: r.BASIC_EPS, net_profit: r.PARENT_NETPROFIT,
+      })));
+      if (data.length < 500) break;
+      page++;
+    } catch (_) { break; }
   }
+  return allRows;
+}
 
-  // ── 美股: Finnhub ──
-  async function fetchUsEarnings(from, to) {
-    if (!serverAvailable) return [];
-    const resp = await fetch(`${API_BASE}/api/us-earnings?from=${from}&to=${to}`);
-    if (!resp.ok) throw new Error('Finnhub ' + resp.status);
-    return resp.json();
-  }
+async function fetchEastmoneyForecast(from, to) {
+  const filter = `(NOTICE_DATE>='${from}')(NOTICE_DATE<='${to}')`;
+  const url = `${EM_BASE}?reportName=RPT_PUBLIC_OP_NEWPREDICT&columns=SECURITY_CODE,SECURITY_NAME_ABBR,NOTICE_DATE,PREDICT_TYPE,PREDICT_AMT_LOWER,PREDICT_AMT_UPPER,ADD_AMP_LOWER,ADD_AMP_UPPER&pageNumber=1&pageSize=500&sortColumns=NOTICE_DATE&sortTypes=1&source=WEB&client=WEB&filter=${encodeURIComponent(filter)}`;
+  try {
+    const resp = await fetch(url, { headers: { 'User-Agent': UA } });
+    if (!resp.ok) return [];
+    const body = await resp.json();
+    if (!body.success) return [];
+    return (body.result?.data || []).map(r => ({
+      symbol: r.SECURITY_CODE, name: r.SECURITY_NAME_ABBR,
+      notice_date: r.NOTICE_DATE?.slice(0,10), period: '业绩预告', eps: null,
+    }));
+  } catch (_) { return []; }
+}
+
+// ── A股: 东方财富业绩预告（独立接口） ──
+async function fetchCnForecast(from, to) {
+  return fetchEastmoneyForecast(from, to);
+}
+
+// ── 美股: Finnhub（直连，无需服务器） ──
+async function fetchUsEarnings(from, to) {
+  if (!FH_KEY) return [];
+  const allRows = [];
+  try {
+    const url = `${FH_BASE}/calendar/earnings?from=${from}&to=${to}&token=${getFHKey()}`;
+    const resp = await fetch(url);
+    if (!resp.ok) return [];
+    const body = await resp.json();
+    const raw = body.earningsCalendar || [];
+    // 去重
+    const seen = new Set();
+    for (const r of raw) {
+      const k = r.symbol + '|' + r.date;
+      if (!seen.has(k)) { seen.add(k); allRows.push(r); }
+    }
+  } catch (_) {}
+  return allRows;
+}
 
   // ── 东方财富 → 事件（A股财报，自带中文名） ──
   function mapCnToEvents(raw, existingEvents) {
@@ -2097,181 +2106,12 @@ function doSearch() {
   searchTimer = setTimeout(async () => {
     try {
       let apiRes;
-      if (serverAvailable) {
-        const url = `${API_BASE}/api/search?q=${encodeURIComponent(q)}`;
+        // 直连 Finnhub 搜索（纯静态）
+        const url = `${FH_BASE}/search?q=${encodeURIComponent(q)}&token=${getFHKey()}`;
         const resp = await fetch(url);
-        if (!resp.ok) throw new Error('search failed');
-        apiRes = await resp.json();
-      } else {
-        // 离线模式：尝试相对路径 API
-        const url = `/api/search?q=${encodeURIComponent(q)}`;
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error('search failed');
-        apiRes = await resp.json();
-      }
-
-      if (!apiRes || !apiRes.length) {
-        ctn.innerHTML = '<div class="ev-empty">🔍 未找到匹配股票<br><span style="font-size:11px;">请检查拼写后重试</span></div>';
-        return;
-      }
-
-      // 将搜索结果合并到本地 stocks（方便后续关注操作）
-      apiRes.forEach(r => {
-        if (!stocks.find(s => s.symbol === r.symbol)) {
-          const cnName = getChineseName(r.symbol);
-          stocks.push({
-            symbol: r.symbol,
-            name: cnName || r.name || r.symbol,
-            exchange: r.exchange || '',
-            market: '🇺🇸',
-            color: STOCK_COLORS[stocks.length % STOCK_COLORS.length],
-            following: false,
-          });
+        let apiRes = [];
+        if (resp.ok) {
+          const body = await resp.json();
+          apiRes = (body.result || []).filter(r => r.type === 'Common Stock' && !r.symbol.includes('.'))
+            .map(r => ({ symbol: r.symbol, name: r.description || r.symbol, exchange: r.exchange || '' }));
         }
-      });
-
-      // 从已合并的 stocks 中取结果（保证有 following 状态和中文名）
-      const mergedRes = apiRes.map(r => stocks.find(s => s.symbol === r.symbol)).filter(Boolean);
-      renderResults(mergedRes, true);
-    } catch (err) {
-      ctn.innerHTML = `<div class="ev-empty">⚠️ 搜索失败<br><span style="font-size:11px;">${err.message||'网络错误'}，请重试</span></div>`;
-    }
-  }, 300);
-}
-
-function toggleFollow(sym) {
-  const st = stocks.find(s => s.symbol===sym);
-  if (!st) return;
-
-  // 如果要关注（非取关），检查免费用户上限
-  if (!st.following && !isPremium) {
-    const curCnt = stocks.filter(s => s.following).length;
-    if (curCnt >= MAX_FREE_STOCKS) {
-      showUpgrade();
-      return;
-    }
-  }
-
-  st.following = !st.following;
-  renderHotTags();
-  renderWL();
-  renderCal();
-  renderEvents();
-  doSearch();
-  updateProfileStats();
-}
-
-// ═══════════════════ MEMBERSHIP ═══════════════════
-function showUpgrade() {
-  document.getElementById('upgrade-overlay').classList.add('show');
-}
-
-function closeUpgrade(e) {
-  if (e && e.target !== document.getElementById('upgrade-overlay')) return;
-  document.getElementById('upgrade-overlay').classList.remove('show');
-}
-
-function doUpgrade() {
-  isPremium = true;
-  try { localStorage.setItem('stockcal-premium', '1'); } catch(_) {}
-  document.getElementById('upgrade-overlay').classList.remove('show');
-  updateMembershipUI();
-  renderAll();
-}
-
-function updateMembershipUI() {
-  const card = document.getElementById('membership-card');
-  const badge = document.getElementById('member-badge');
-  const title = document.getElementById('member-title');
-  const desc = document.getElementById('member-desc');
-  const btn = document.getElementById('member-btn');
-  const inline = document.getElementById('membership-badge-inline');
-
-  if (isPremium) {
-    card.classList.add('premium');
-    badge.textContent = 'PREMIUM';
-    title.textContent = '高级会员';
-    desc.textContent = '无限关注 · 全部功能已解锁';
-    btn.textContent = '👑 已开通';
-    btn.onclick = null;
-    inline.innerHTML = '<span style="display:inline-block;background:linear-gradient(135deg,#C9A87C,#D4AF8D);color:#fff;padding:2px 10px;border-radius:8px;font-size:10px;font-weight:700;">👑 PREMIUM</span>';
-    document.getElementById('profile-name').textContent = 'VIP投资者';
-    document.getElementById('profile-avatar').textContent = '👑';
-  } else {
-    card.classList.remove('premium');
-    badge.textContent = 'FREE';
-    title.textContent = '免费用户';
-    desc.textContent = `可关注 ${MAX_FREE_STOCKS} 只股票 · 基础提醒`;
-    btn.textContent = '✨ 升级会员';
-    btn.onclick = showUpgrade;
-    inline.innerHTML = '';
-    document.getElementById('profile-name').textContent = '投资者';
-    document.getElementById('profile-avatar').textContent = '📈';
-  }
-}
-
-// ═══════════════════ BACKGROUND COLOR ═══════════════════
-function setBg(idx, silent) {
-  currentBg = idx;
-  // 清除所有背景类
-  for (let i = 0; i <= 7; i++) document.body.classList.remove('bg-' + i);
-  // 应用新背景
-  document.body.classList.add('bg-' + idx);
-  // 更新选择器
-  document.querySelectorAll('.bg-swatch').forEach(s => s.classList.remove('active'));
-  const swatch = document.querySelector(`.bg-swatch[data-bg="${idx}"]`);
-  if (swatch) swatch.classList.add('active');
-  if (!silent) {
-    try { localStorage.setItem('stockcal-bg', idx); } catch(_) {}
-    // 非会员切换背景时提示升级
-    if (!isPremium) {
-      setTimeout(() => showUpgrade(), 500);
-    }
-  }
-}
-
-// ═══════════════════ TAB ═══════════════════
-function switchTab(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  document.querySelector(`.tab[data-page="${page}"]`).classList.add('active');
-  if (page==='watchlist') renderWL();
-  if (page==='feed') renderFeed();
-}
-
-// ═══════════════════ SETTINGS ═══════════════════
-function toggleSwitch(el) {
-  el.querySelector('.toggle').classList.toggle('on');
-}
-
-function updateProfileStats() {
-  const fwCnt = stocks.filter(s => s.following).length;
-  const evCnt = events.length;
-  const limitText = isPremium ? '' : ` / ${MAX_FREE_STOCKS} 上限`;
-  document.getElementById('profile-stats').textContent =
-    `关注 ${fwCnt} 只股票${limitText} · 本月 ${evCnt} 个事件`;
-  updateMembershipUI();
-}
-
-// ═══════════════════ UTILS ═══════════════════
-function pad(n) { return String(n).padStart(2,'0'); }
-function fmtDate(d) { return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
-function weekdayCN(w) { return ['','周一','周二','周三','周四','周五','周六','周日'][w]; }
-
-// Touch swipe for month
-let tx = 0;
-document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
-document.addEventListener('touchend', e => {
-  const d = e.changedTouches[0].clientX - tx;
-  if (Math.abs(d) > 60 && calView===0) changeMonth(d > 0 ? -1 : 1);
-});
-
-document.addEventListener('keydown', e => {
-  if (e.key==='Escape') { closeSheet(); closeSearch(); closeImport(); closeUpgrade(); }
-  if (e.key==='ArrowLeft' && calView===0) changeMonth(-1);
-  if (e.key==='ArrowRight' && calView===0) changeMonth(1);
-});
-</script>
-</body>
-</html>
