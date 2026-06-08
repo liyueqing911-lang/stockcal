@@ -2066,7 +2066,6 @@ function doSearch() {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(async () => {
     try {
-      let apiRes;
         // 直连 Finnhub 搜索（纯静态）
         const url = `${FH_BASE}/search?q=${encodeURIComponent(q)}&token=${getFHKey()}`;
         const resp = await fetch(url);
@@ -2076,3 +2075,47 @@ function doSearch() {
           apiRes = (body.result || []).filter(r => r.type === 'Common Stock' && !r.symbol.includes('.'))
             .map(r => ({ symbol: r.symbol, name: r.description || r.symbol, exchange: r.exchange || '' }));
         }
+      // 从已合并的 stocks 中取结果（保证有 following 状态和中文名）
+      const mergedRes = apiRes.map(r => stocks.find(s => s.symbol === r.symbol)).filter(Boolean);
+      renderResults(mergedRes, true);
+    } catch (err) {
+      ctn.innerHTML = '<div class="ev-empty">⚠️ 搜索失败<br><span style="font-size:11px;">${err.message||"网络错误"}，请重试</span></div>';
+    }
+  }, 300);
+}
+
+// ═══════════════════ SETTINGS ═══════════════════
+function toggleSwitch(el) {
+  el.querySelector('.toggle').classList.toggle('on');
+}
+
+function updateProfileStats() {
+  const fwCnt = stocks.filter(s => s.following).length;
+  const evCnt = events.length;
+  const limitText = isPremium ? '' : ' / ' + MAX_FREE_STOCKS + ' 上限';
+  document.getElementById('profile-stats').textContent =
+    '关注 ' + fwCnt + ' 只股票' + limitText + ' · 本月 ' + evCnt + ' 个事件';
+  updateMembershipUI();
+}
+
+// ═══════════════════ UTILS ═══════════════════
+function pad(n) { return String(n).padStart(2,'0'); }
+function fmtDate(d) { return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function weekdayCN(w) { return ['','周一','周二','周三','周四','周五','周六','周日'][w]; }
+
+// Touch swipe for month
+let tx = 0;
+document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const d = e.changedTouches[0].clientX - tx;
+  if (Math.abs(d) > 60 && calView===0) changeMonth(d > 0 ? -1 : 1);
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Escape') { closeSheet(); closeSearch(); closeImport(); closeUpgrade(); }
+  if (e.key==='ArrowLeft' && calView===0) changeMonth(-1);
+  if (e.key==='ArrowRight' && calView===0) changeMonth(1);
+});
+</script>
+</body>
+</html>
