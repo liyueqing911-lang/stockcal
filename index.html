@@ -759,7 +759,6 @@ body.dark.bg-7 { --bg: #1A1C1E; --bg-secondary: #242628; --card: #2C2E30; --card
   </div>
 </div>
 
-<script src="https://static.cloudbase.net/cloudbase-js-sdk/latest/cloudbase.full.js"></script>
 <script>
 // ═══════════════════ DATA ═══════════════════
 const EVENT_COLORS = {
@@ -847,66 +846,90 @@ const stocks = [
 ];
 
 const events = [
-  // ══ A股真实财报数据（东方财富 2026年6-8月）════
-  { id:101,symbol:'834377',type:'earnings',date:'2026-06-01',time:null,tz:'CST',title:'一季报',desc:'德博科技 2025年一季报',extra:{},_default:true},
-  { id:102,symbol:'874779',type:'earnings',date:'2026-06-01',time:null,tz:'CST',title:'一季报',desc:'朱炳仁铜 2026年一季报',extra:{},_default:true},
-  { id:103,symbol:'874438',type:'earnings',date:'2026-06-01',time:null,tz:'CST',title:'一季报',desc:'亚信股份 2026年一季报',extra:{},_default:true},
-  { id:104,symbol:'874494',type:'earnings',date:'2026-06-02',time:null,tz:'CST',title:'一季报',desc:'新涛智控 2026年一季报',extra:{},_default:true},
-  { id:105,symbol:'874600',type:'earnings',date:'2026-06-02',time:null,tz:'CST',title:'一季报',desc:'千岸科技 2026年一季报',extra:{},_default:true},
-  { id:106,symbol:'833755',type:'earnings',date:'2026-06-02',time:null,tz:'CST',title:'一季报',desc:'扬德环能 2026年一季报',extra:{},_default:true},
-  { id:107,symbol:'874860',type:'earnings',date:'2026-06-02',time:null,tz:'CST',title:'一季报',desc:'帅特龙 2026年一季报',extra:{},_default:true},
-  { id:108,symbol:'832836',type:'earnings',date:'2026-06-03',time:null,tz:'CST',title:'一季报',desc:'银钢一通 2026年一季报',extra:{},_default:true},
-  { id:109,symbol:'874726',type:'earnings',date:'2026-06-03',time:null,tz:'CST',title:'一季报',desc:'国电股份 2026年一季报',extra:{},_default:true},
-  { id:110,symbol:'874775',type:'earnings',date:'2026-06-03',time:null,tz:'CST',title:'一季报',desc:'云岭光电 2026年一季报',extra:{},_default:true},
-  { id:111,symbol:'001399',type:'earnings',date:'2026-06-04',time:null,tz:'CST',title:'一季报',desc:'惠科股份 2026年一季报',extra:{},_default:true},
-  { id:112,symbol:'874976',type:'earnings',date:'2026-06-04',time:null,tz:'CST',title:'一季报',desc:'澳维科技 2026年一季报',extra:{},_default:true},
-  { id:113,symbol:'688797',type:'earnings',date:'2026-06-04',time:null,tz:'CST',title:'一季报',desc:'臻宝科技 2026年一季报',extra:{},_default:true},
-  { id:114,symbol:'874457',type:'earnings',date:'2026-06-05',time:null,tz:'CST',title:'一季报',desc:'永励精密 2025年一季报',extra:{},_default:true},
-  { id:115,symbol:'001399',type:'earnings',date:'2026-06-05',time:null,tz:'CST',title:'一季报',desc:'惠科股份 2025年一季报',extra:{},_default:true},
-  { id:116,symbol:'870021',type:'earnings',date:'2026-06-05',time:null,tz:'CST',title:'年报',desc:'中投创新 2025年年报',extra:{},_default:true},
-  // ══ A股 业绩预告（6月）════
-  { id:121,symbol:'001399',type:'forecast',date:'2026-06-04',time:null,tz:'CST',title:'业绩预告',desc:'惠科股份 业绩预告 略增',extra:{'预告类型':'略增'},_default:true},
-  { id:122,symbol:'688797',type:'forecast',date:'2026-06-04',time:null,tz:'CST',title:'业绩预告',desc:'臻宝科技 业绩预告 略增',extra:{'预告类型':'略增'},_default:true},
-  // ══ 热门股票模拟事件（覆盖常用关注）════
-  { id:1, symbol:'AAPL', type:'earnings', date:'2026-07-29', time:'16:30', tz:'美东', title:'Q3 财报发布', desc:'苹果第三季度财报', extra:{'预期EPS':'$1.93','预期营收':'$94.5B'} },
-  { id:2, symbol:'TSLA', type:'earnings', date:'2026-07-21', time:'16:30', tz:'美东', title:'Q2 财报发布', desc:'特斯拉第二季度财报', extra:{'预期EPS':'$0.45'} },
-  { id:3, symbol:'GOOGL',type:'earnings', date:'2026-07-21', time:'16:30', tz:'美东', title:'Q2 财报发布', desc:'谷歌第二季度财报', extra:{'预期EPS':'$2.96'} },
-  { id:4, symbol:'MSFT', type:'earnings', date:'2026-07-28', time:'16:30', tz:'美东', title:'Q4 财报发布', desc:'微软第四季度财报', extra:{'预期EPS':'$4.33','预期营收':'$68.5B'} },
-  { id:5, symbol:'NVDA', type:'earnings', date:'2026-08-25', time:'16:20', tz:'美东', title:'Q2 财报发布', desc:'英伟达Q2财报，AI芯片业务持续高增长', extra:{'预期EPS':'$2.12','预期营收':'$40B'} },
-  { id:6, symbol:'AMZN', type:'earnings', date:'2026-07-29', time:'16:00', tz:'美东', title:'Q2 财报发布', desc:'亚马逊第二季度财报', extra:{'预期EPS':'$1.85'} },
-  { id:7, symbol:'META', type:'earnings', date:'2026-07-28', time:'16:00', tz:'美东', title:'Q2 财报发布', desc:'Meta 第二季度财报', extra:{'预期EPS':'$7.32'} },
-  { id:8, symbol:'AMD',  type:'earnings', date:'2026-08-03', time:'16:00', tz:'美东', title:'Q2 财报发布', desc:'AMD 第二季度财报', extra:{'预期EPS':'$1.62'} },
-  { id:9, symbol:'INTC', type:'earnings', date:'2026-07-22', time:'16:00', tz:'美东', title:'Q2 财报发布', desc:'英特尔第二季度财报', extra:{'预期EPS':'$0.21'} },
-  { id:10,symbol:'AVGO', type:'earnings', date:'2026-06-03', time:'16:15', tz:'美东', title:'Q2 财报发布', desc:'博通第二季度财报', extra:{'预期EPS':'$2.45'} },
-  { id:11,symbol:'ORCL', type:'earnings', date:'2026-06-10', time:'16:00', tz:'美东', title:'Q4 财报发布', desc:'甲骨文第四季度财报', extra:{'预期EPS':'$2.00'} },
-  { id:12,symbol:'MU',   type:'earnings', date:'2026-06-24', time:'16:00', tz:'美东', title:'Q3 财报发布', desc:'美光第三季度财报', extra:{'预期EPS':'$20.07'} },
-  { id:13,symbol:'ADBE', type:'earnings', date:'2026-06-11', time:'16:00', tz:'美东', title:'Q2 财报发布', desc:'奥多比第二季度财报', extra:{'预期EPS':'$5.95'} },
-  { id:14,symbol:'600519',type:'earnings',date:'2026-08-28',time:null,tz:'CST',title:'半年报',desc:'贵州茅台 2026年半年报',extra:{},_default:true},
-  { id:15,symbol:'000858',type:'earnings',date:'2026-08-28',time:null,tz:'CST',title:'半年报',desc:'五粮液 2026年半年报',extra:{},_default:true},
-  { id:16,symbol:'300750',type:'earnings',date:'2026-08-26',time:null,tz:'CST',title:'半年报',desc:'宁德时代 2026年半年报',extra:{},_default:true},
-  { id:17,symbol:'002594',type:'earnings',date:'2026-08-28',time:null,tz:'CST',title:'半年报',desc:'比亚迪 2026年半年报',extra:{},_default:true},
-  { id:18,symbol:'601318',type:'earnings',date:'2026-08-27',time:null,tz:'CST',title:'半年报',desc:'中国平安 2026年半年报',extra:{},_default:true},
-  { id:19,symbol:'000333',type:'earnings',date:'2026-08-29',time:null,tz:'CST',title:'半年报',desc:'美的集团 2026年半年报',extra:{},_default:true},
-  { id:20,symbol:'0700',  type:'earnings',date:'2026-08-13',time:'16:00',tz:'HKT',title:'半年报',desc:'腾讯控股 2026年半年报',extra:{},_default:true},
-  { id:21,symbol:'3690',  type:'earnings',date:'2026-08-26',time:'16:00',tz:'HKT',title:'Q2 财报',desc:'美团 2026年Q2财报',extra:{},_default:true},
-  { id:22,symbol:'1810',  type:'earnings',date:'2026-08-20',time:'16:00',tz:'HKT',title:'Q2 财报',desc:'小米集团 2026年Q2财报',extra:{},_default:true},
-  { id:23,symbol:'BABA',  type:'earnings',date:'2026-08-27',time:null,tz:'美东',title:'Q1 财报发布',desc:'阿里巴巴 Q1 FY2027 财报',extra:{'预期EPS':'¥10.01'} },
-  // Product / shareholder events
-  { id:31,symbol:'AAPL', type:'product', date:'2026-06-03', time:'10:00', tz:'美东', title:'WWDC 2026 全球开发者大会', desc:'苹果全球开发者大会，iOS 20与AI新功能', extra:{'焦点':'iOS 20 · AI'} },
-  { id:32,symbol:'TSLA', type:'product', date:'2026-06-12', time:'14:00', tz:'美东', title:'新车型交付仪式', desc:'特斯拉新车型首批交付活动', extra:{'地点':'Fremont, CA'} },
-  { id:33,symbol:'GOOGL',type:'product', date:'2026-06-18', time:'13:00', tz:'美东', title:'Google I/O 开发者大会', desc:'谷歌年度开发者大会', extra:{'焦点':'Gemini 3.0'} },
-  { id:34,symbol:'1810',  type:'product', date:'2026-06-18', time:'14:00', tz:'CST', title:'小米新品发布会', desc:'小米汽车+手机双新品', extra:{'焦点':'SU7交付量'} },
-  { id:35,symbol:'TSLA', type:'shareholder', date:'2026-06-20', time:'10:00', tz:'美东', title:'年度股东大会', desc:'特斯拉年度股东大会', extra:{'地点':'Austin, TX'} },
-  { id:36,symbol:'NVDA', type:'investor', date:'2026-06-14', time:'11:00', tz:'美东', title:'分析师日', desc:'英伟达投资者关系分析师会议', extra:{'焦点':'Blackwell芯片进度'} },
-  { id:37,symbol:'600519',type:'dividend', date:'2026-06-18', time:null, tz:null, title:'分红除权日', desc:'贵州茅台年度分红 ¥25.91/股', extra:{'每股分红':'¥25.91','股息率':'1.5%'} },
-  { id:38,symbol:'MSFT', type:'dividend', date:'2026-06-10', time:null, tz:null, title:'分红除权日', desc:'微软季度分红 $0.83/股', extra:{'每股分红':'$0.83','股息率':'0.7%'} },
-  { id:39,symbol:'GOOGL',type:'dividend', date:'2026-06-08', time:null, tz:null, title:'分红除权日', desc:'谷歌季度分红 $0.25/股', extra:{'每股分红':'$0.25'} },
-  { id:40,symbol:'AAPL', type:'dividend', date:'2026-06-24', time:null, tz:null, title:'分红除权日', desc:'苹果季度分红 $0.26/股', extra:{'每股分红':'$0.26'} },
-  { id:41,symbol:'AMZN', type:'investor', date:'2026-06-05', time:'09:00', tz:'美东', title:'投资者日', desc:'亚马逊投资者日，云计算与AI战略', extra:{'主题':'AWS AI战略'} },
-  { id:42,symbol:'META', type:'product', date:'2026-06-25', time:'10:00', tz:'美东', title:'Meta Connect 大会', desc:'预计发布新一代VR/AR产品', extra:{'焦点':'Quest 4 + AI眼镜'} },
-  { id:43,symbol:'300750',type:'product', date:'2026-06-20', time:'14:00', tz:'CST', title:'新品发布会', desc:'宁德时代固态电池新品发布', extra:{'焦点':'固态电池·500Wh/kg'} },
+  { id:1000, symbol:'834377', type:'earnings', date:'2026-06-01', time:null, tz:'CST', title:'2025年 一季报', desc:'德博科技 2025年 一季报', extra:{'每股收益':'¥0.44'} },
+  { id:1001, symbol:'874779', type:'earnings', date:'2026-06-01', time:null, tz:'CST', title:'2026年 一季报', desc:'朱炳仁铜 2026年 一季报', extra:{'每股收益':'¥0.68'} },
+  { id:1002, symbol:'874779', type:'earnings', date:'2026-06-01', time:null, tz:'CST', title:'2025年 一季报', desc:'朱炳仁铜 2025年 一季报', extra:{'每股收益':'¥0.25'} },
+  { id:1003, symbol:'874438', type:'earnings', date:'2026-06-01', time:null, tz:'CST', title:'2026年 一季报', desc:'亚信股份 2026年 一季报', extra:{'每股收益':'¥0.29'} },
+  { id:1004, symbol:'874438', type:'earnings', date:'2026-06-01', time:null, tz:'CST', title:'2025年 一季报', desc:'亚信股份 2025年 一季报', extra:{'每股收益':'¥0.18'} },
+  { id:1005, symbol:'834377', type:'earnings', date:'2026-06-01', time:null, tz:'CST', title:'2026年 一季报', desc:'德博科技 2026年 一季报', extra:{'每股收益':'¥0.6'} },
+  { id:1006, symbol:'874494', type:'earnings', date:'2026-06-02', time:null, tz:'CST', title:'2025年 一季报', desc:'新涛智控 2025年 一季报', extra:{'每股收益':'¥0.22'} },
+  { id:1007, symbol:'874600', type:'earnings', date:'2026-06-02', time:null, tz:'CST', title:'2026年 一季报', desc:'千岸科技 2026年 一季报', extra:{'每股收益':'¥0.71'} },
+  { id:1008, symbol:'833755', type:'earnings', date:'2026-06-02', time:null, tz:'CST', title:'2026年 一季报', desc:'扬德环能 2026年 一季报', extra:{'每股收益':'¥0.08'} },
+  { id:1009, symbol:'874860', type:'earnings', date:'2026-06-02', time:null, tz:'CST', title:'2026年 一季报', desc:'帅特龙 2026年 一季报', extra:{'每股收益':'¥0.52'} },
+  { id:1010, symbol:'874860', type:'earnings', date:'2026-06-02', time:null, tz:'CST', title:'2025年 一季报', desc:'帅特龙 2025年 一季报', extra:{'每股收益':'¥0.48'} },
+  { id:1011, symbol:'874522', type:'earnings', date:'2026-06-02', time:null, tz:'CST', title:'2026年 一季报', desc:'中德科技 2026年 一季报', extra:{'每股收益':'¥0.09'} },
+  { id:1012, symbol:'874494', type:'earnings', date:'2026-06-02', time:null, tz:'CST', title:'2026年 一季报', desc:'新涛智控 2026年 一季报', extra:{'每股收益':'¥0.17'} },
+  { id:1013, symbol:'832836', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2025年 一季报', desc:'银钢一通 2025年 一季报', extra:{'每股收益':'¥0.27'} },
+  { id:1014, symbol:'874726', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2026年 一季报', desc:'国电股份 2026年 一季报', extra:{'每股收益':'¥0.38'} },
+  { id:1015, symbol:'874726', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2025年 一季报', desc:'国电股份 2025年 一季报', extra:{'每股收益':'¥0.34'} },
+  { id:1016, symbol:'874775', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2026年 一季报', desc:'云岭光电 2026年 一季报', extra:{'每股收益':'¥0.0291'} },
+  { id:1017, symbol:'874775', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2025年 一季报', desc:'云岭光电 2025年 一季报', extra:{'每股收益':'¥0.0221'} },
+  { id:1018, symbol:'873700', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2026年 一季报', desc:'益坤电气 2026年 一季报', extra:{'每股收益':'¥0.15'} },
+  { id:1019, symbol:'873700', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2025年 一季报', desc:'益坤电气 2025年 一季报', extra:{'每股收益':'¥0.13'} },
+  { id:1020, symbol:'832836', type:'earnings', date:'2026-06-03', time:null, tz:'CST', title:'2026年 一季报', desc:'银钢一通 2026年 一季报', extra:{'每股收益':'¥0.27'} },
+  { id:1021, symbol:'875168', type:'earnings', date:'2026-06-04', time:null, tz:'CST', title:'2025年 年报', desc:'安徽城设 2025年 年报', extra:{'每股收益':'¥1.17'} },
+  { id:1022, symbol:'001399', type:'earnings', date:'2026-06-04', time:null, tz:'CST', title:'2026年 一季报', desc:'惠科股份 2026年 一季报', extra:{'每股收益':'¥0.15'} },
+  { id:1023, symbol:'874976', type:'earnings', date:'2026-06-04', time:null, tz:'CST', title:'2026年 一季报', desc:'澳维科技 2026年 一季报', extra:{} },
+  { id:1024, symbol:'874976', type:'earnings', date:'2026-06-04', time:null, tz:'CST', title:'2025年 一季报', desc:'澳维科技 2025年 一季报', extra:{} },
+  { id:1025, symbol:'688797', type:'earnings', date:'2026-06-04', time:null, tz:'CST', title:'2026年 一季报', desc:'臻宝科技 2026年 一季报', extra:{'每股收益':'¥0.44'} },
+  { id:1026, symbol:'874352', type:'earnings', date:'2026-06-04', time:null, tz:'CST', title:'2026年 一季报', desc:'福建三星 2026年 一季报', extra:{'每股收益':'¥0.31'} },
+  { id:1027, symbol:'874457', type:'earnings', date:'2026-06-05', time:null, tz:'CST', title:'2025年 一季报', desc:'永励精密 2025年 一季报', extra:{'每股收益':'¥0.45'} },
+  { id:1028, symbol:'874457', type:'earnings', date:'2026-06-05', time:null, tz:'CST', title:'2026年 一季报', desc:'永励精密 2026年 一季报', extra:{'每股收益':'¥0.39'} },
+  { id:1029, symbol:'870021', type:'earnings', date:'2026-06-05', time:null, tz:'CST', title:'2025年 年报', desc:'中投创新 2025年 年报', extra:{'每股收益':'¥0.0036'} },
+  { id:1030, symbol:'874520', type:'earnings', date:'2026-06-05', time:null, tz:'CST', title:'2026年 一季报', desc:'龙鑫智能 2026年 一季报', extra:{'每股收益':'¥0.32'} },
+  { id:1031, symbol:'873254', type:'earnings', date:'2026-06-05', time:null, tz:'CST', title:'2026年 一季报', desc:'科蓝环保 2026年 一季报', extra:{'每股收益':'¥0.16'} },
+  { id:1032, symbol:'920126', type:'forecast', date:'2026-06-01', time:null, tz:'CST', title:'业绩预告', desc:'永大股份 略减', extra:{'预告类型':'略减','净利润变动':'-14.35%~-1.19%'} },
+  { id:1033, symbol:'920126', type:'forecast', date:'2026-06-01', time:null, tz:'CST', title:'业绩预告', desc:'永大股份 略增', extra:{'预告类型':'略增','净利润变动':'5.99%~21.58%'} },
+  { id:1034, symbol:'920126', type:'forecast', date:'2026-06-01', time:null, tz:'CST', title:'业绩预告', desc:'永大股份 续盈', extra:{'预告类型':'续盈','净利润变动':'-4.54%~10.18%'} },
+  { id:1035, symbol:'001399', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'惠科股份 略减', extra:{'预告类型':'略减','净利润变动':'-14.42%~-5.17%'} },
+  { id:1036, symbol:'001399', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'惠科股份 略增', extra:{'预告类型':'略增','净利润变动':'5.28%~15.81%'} },
+  { id:1037, symbol:'001399', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'惠科股份 续盈', extra:{'预告类型':'续盈','净利润变动':'-4.93%~4.58%'} },
+  { id:1038, symbol:'688797', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'臻宝科技 略增', extra:{'预告类型':'略增','净利润变动':'23.26%~35%'} },
+  { id:1039, symbol:'688797', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'臻宝科技 略增', extra:{'预告类型':'略增','净利润变动':'28.83%~34.29%'} },
+  { id:1040, symbol:'688797', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'臻宝科技 略增', extra:{'预告类型':'略增','净利润变动':'14.71%~26.41%'} },
+  { id:1041, symbol:'920072', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'科莱瑞迪 略增', extra:{'预告类型':'略增','净利润变动':'10%~25.89%'} },
+  { id:1042, symbol:'920072', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'科莱瑞迪 略增', extra:{'预告类型':'略增','净利润变动':'8.42%~24.08%'} },
+  { id:1043, symbol:'920072', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'科莱瑞迪 略增', extra:{'预告类型':'略增','净利润变动':'10.92%~26.95%'} },
+  { id:1044, symbol:'301669', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'高特电子 略增', extra:{'预告类型':'略增','净利润变动':'23.64%~36.65%'} },
+  { id:1045, symbol:'301669', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'高特电子 续盈', extra:{'预告类型':'续盈','净利润变动':'-2.08%~8.23%'} },
+  { id:1046, symbol:'301669', type:'forecast', date:'2026-06-04', time:null, tz:'CST', title:'业绩预告', desc:'高特电子 略增', extra:{'预告类型':'略增','净利润变动':'14.81%~26.91%'} },
+  { id:1047, symbol:'AAPL', type:'earnings', date:'2026-07-29', time:'16:30', tz:'美东', title:'Q3 财报', desc:'苹果 Q3 财报', extra:{'预期EPS':'$1.93','预期营收':'$94.5B'} },
+  { id:1048, symbol:'TSLA', type:'earnings', date:'2026-07-21', time:'16:30', tz:'美东', title:'Q2 财报', desc:'特斯拉 Q2 财报', extra:{'预期EPS':'$0.45'} },
+  { id:1049, symbol:'GOOGL', type:'earnings', date:'2026-07-21', time:'16:30', tz:'美东', title:'Q2 财报', desc:'谷歌 Q2 财报', extra:{'预期EPS':'$2.96'} },
+  { id:1050, symbol:'MSFT', type:'earnings', date:'2026-07-28', time:'16:30', tz:'美东', title:'Q4 财报', desc:'微软 Q4 财报', extra:{'预期EPS':'$4.33','预期营收':'$68.5B'} },
+  { id:1051, symbol:'NVDA', type:'earnings', date:'2026-08-25', time:'16:20', tz:'美东', title:'Q2 财报', desc:'英伟达 Q2 财报', extra:{'预期EPS':'$2.12','预期营收':'$40B'} },
+  { id:1052, symbol:'AMZN', type:'earnings', date:'2026-07-29', time:'16:00', tz:'美东', title:'Q2 财报', desc:'亚马逊 Q2 财报', extra:{'预期EPS':'$1.85'} },
+  { id:1053, symbol:'META', type:'earnings', date:'2026-07-28', time:'16:00', tz:'美东', title:'Q2 财报', desc:'Meta Q2 财报', extra:{'预期EPS':'$7.32'} },
+  { id:1054, symbol:'AMD', type:'earnings', date:'2026-08-03', time:'16:00', tz:'美东', title:'Q2 财报', desc:'超威半导体 Q2 财报', extra:{'预期EPS':'$1.62'} },
+  { id:1055, symbol:'INTC', type:'earnings', date:'2026-07-22', time:'16:00', tz:'美东', title:'Q2 财报', desc:'英特尔 Q2 财报', extra:{'预期EPS':'$0.21'} },
+  { id:1056, symbol:'AVGO', type:'earnings', date:'2026-06-03', time:'16:15', tz:'美东', title:'Q2 财报', desc:'博通 Q2 财报', extra:{'预期EPS':'$2.45'} },
+  { id:1057, symbol:'ORCL', type:'earnings', date:'2026-06-10', time:'16:00', tz:'美东', title:'Q4 财报', desc:'甲骨文 Q4 财报', extra:{'预期EPS':'$2.00'} },
+  { id:1058, symbol:'MU', type:'earnings', date:'2026-06-24', time:'16:00', tz:'美东', title:'Q3 财报', desc:'美光 Q3 财报', extra:{'预期EPS':'$20.07'} },
+  { id:1059, symbol:'ADBE', type:'earnings', date:'2026-06-11', time:'16:00', tz:'美东', title:'Q2 财报', desc:'奥多比 Q2 财报', extra:{'预期EPS':'$5.95'} },
+  { id:1060, symbol:'BABA', type:'earnings', date:'2026-08-27', time:null, tz:'美东', title:'Q1 FY2027', desc:'阿里巴巴 Q1 FY2027', extra:{'预期EPS':'¥10.01'} },
+  { id:1061, symbol:'600519', type:'earnings', date:'2026-08-28', time:null, tz:'CST', title:'半年报', desc:'贵州茅台 半年报', extra:{} },
+  { id:1062, symbol:'000858', type:'earnings', date:'2026-08-28', time:null, tz:'CST', title:'半年报', desc:'五粮液 半年报', extra:{} },
+  { id:1063, symbol:'300750', type:'earnings', date:'2026-08-26', time:null, tz:'CST', title:'半年报', desc:'宁德时代 半年报', extra:{} },
+  { id:1064, symbol:'002594', type:'earnings', date:'2026-08-28', time:null, tz:'CST', title:'半年报', desc:'比亚迪 半年报', extra:{} },
+  { id:1065, symbol:'601318', type:'earnings', date:'2026-08-27', time:null, tz:'CST', title:'半年报', desc:'中国平安 半年报', extra:{} },
+  { id:1066, symbol:'000333', type:'earnings', date:'2026-08-29', time:null, tz:'CST', title:'半年报', desc:'美的集团 半年报', extra:{} },
+  { id:1067, symbol:'0700', type:'earnings', date:'2026-08-13', time:'16:00', tz:'HKT', title:'半年报', desc:'腾讯控股 半年报', extra:{} },
+  { id:1068, symbol:'3690', type:'earnings', date:'2026-08-26', time:'16:00', tz:'HKT', title:'Q2 财报', desc:'美团-W Q2 财报', extra:{} },
+  { id:1069, symbol:'1810', type:'earnings', date:'2026-08-20', time:'16:00', tz:'HKT', title:'Q2 财报', desc:'小米集团-W Q2 财报', extra:{} },
+  { id:1070, symbol:'AAPL', type:'product', date:'2026-06-03', time:'10:00', tz:'美东', title:'WWDC 2026', desc:'苹果全球开发者大会，iOS 20与AI新功能', extra:{'焦点':'iOS 20 · AI'} },
+  { id:1071, symbol:'TSLA', type:'product', date:'2026-06-12', time:'14:00', tz:'美东', title:'新车型交付仪式', desc:'特斯拉新车型首批交付活动', extra:{'地点':'Fremont, CA'} },
+  { id:1072, symbol:'GOOGL', type:'product', date:'2026-06-18', time:'13:00', tz:'美东', title:'Google I/O 开发者大会', desc:'谷歌年度开发者大会', extra:{'焦点':'Gemini 3.0'} },
+  { id:1073, symbol:'NVDA', type:'investor', date:'2026-06-14', time:'11:00', tz:'美东', title:'分析师日', desc:'英伟达投资者关系分析师会议', extra:{'焦点':'Blackwell芯片进度'} },
+  { id:1074, symbol:'TSLA', type:'shareholder', date:'2026-06-20', time:'10:00', tz:'美东', title:'年度股东大会', desc:'特斯拉年度股东大会，投票表决多项议案', extra:{'地点':'Austin, TX'} },
+  { id:1075, symbol:'600519', type:'dividend', date:'2026-06-18', time:null, tz:'CST', title:'分红除权日', desc:'贵州茅台年度分红 ¥25.91/股', extra:{'每股分红':'¥25.91','股息率':'1.5%'} },
+  { id:1076, symbol:'1810', type:'product', date:'2026-06-18', time:'14:00', tz:'CST', title:'小米新品发布会', desc:'小米汽车+手机双新品', extra:{'焦点':'SU7交付量'} },
+  { id:1077, symbol:'300750', type:'product', date:'2026-06-20', time:'14:00', tz:'CST', title:'新品发布会', desc:'宁德时代固态电池新品发布', extra:{'焦点':'固态电池·500Wh/kg'} },
+  { id:1078, symbol:'AMZN', type:'investor', date:'2026-06-05', time:'09:00', tz:'美东', title:'投资者日', desc:'亚马逊云计算与AI战略', extra:{'主题':'AWS AI战略'} },
+  { id:1079, symbol:'META', type:'product', date:'2026-06-25', time:'10:00', tz:'美东', title:'Meta Connect 大会', desc:'预计发布新一代VR/AR产品', extra:{'焦点':'Quest 4 + AI眼镜'} },
+  { id:1080, symbol:'MSFT', type:'dividend', date:'2026-06-10', time:null, tz:'CST', title:'分红除权日', desc:'微软季度分红 $0.83/股', extra:{'每股分红':'$0.83','股息率':'0.7%'} },
+  { id:1081, symbol:'GOOGL', type:'dividend', date:'2026-06-08', time:null, tz:'CST', title:'分红除权日', desc:'谷歌季度分红 $0.25/股', extra:{'每股分红':'$0.25'} },
+  { id:1082, symbol:'AAPL', type:'dividend', date:'2026-06-24', time:null, tz:'CST', title:'分红除权日', desc:'苹果季度分红 $0.26/股', extra:{'每股分红':'$0.26'} }
 ];
-
 const feedItems = [
   { symbol:'AAPL', type:'product', title:'苹果WWDC 2026定档6月3日：iOS 20与AI成最大看点', desc:'苹果公司确认WWDC 2026将于6月3日在Apple Park举行，预计发布iOS 20、iPadOS 18和多项AI新功能。', time:'2小时前' },
   { symbol:'NVDA', type:'earnings', title:'英伟达Q1财报预期大幅上调，AI芯片需求持续井喷', desc:'多家华尔街投行上调英伟达Q1营收预期至385亿美元，Blackwell芯片产能爬坡成为关注焦点。', time:'5小时前' },
@@ -953,23 +976,6 @@ function followedEvents() {
   return events.filter(e => syms.has(e.symbol));
 }
 
-// ═══════════════════ 首次配置 ═══════════════════
-function promptForFHKey() {
-  if (getFHKey()) return true; // 已有 key
-  const key = prompt(
-    '📈 欢迎使用 StockCal 炒股日历！\n\n' +
-    '请输入 Finnhub API Key 以获取美股财报数据：\n' +
-    '(免费获取: https://finnhub.io/register)\n\n' +
-    '留空则仅显示 A 股数据（东方财富）',
-    ''
-  );
-  if (key && key.trim()) {
-    localStorage.setItem('stockcal-fh-key', key.trim());
-    return true;
-  }
-  return false;
-}
-
 // ═══════════════════ INIT ═══════════════════
 document.addEventListener('DOMContentLoaded', async () => {
   loadPrefs();
@@ -977,10 +983,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateStatusTime();
   setInterval(updateStatusTime, 60000);
   renderAll();
-  // 首次使用提示输入 Finnhub Key（可选，跳过则仅显示 A 股）
-  promptForFHKey();
-  // 直接拉取数据（纯静态，无需服务器）
-  autoFetchIfKey();
 });
 
 function loadPrefs() {
@@ -1822,47 +1824,13 @@ async function autoFetchIfKey() {
   }
 }
 
-// ═══════════════════ CloudBase SDK 调用云函数（绕过 CORS） ═══════════════════
-const CB_ENV = 'stockcal-d4g21ipft1f36333c';
-let cbApp = null;
+// ═══════════════════ 纯静态数据（每周手动更新） ═══════════════════
+// 数据来源：东方财富 datacenter.eastmoney.com
+// 更新方式：替换下方 events 数组即可
 
-function getCbApp() {
-  if (!cbApp && typeof cloudbase !== 'undefined') {
-    cbApp = cloudbase.init({ env: CB_ENV });
-  }
-  return cbApp;
-}
-
-async function callCloudFunction(action, params) {
-  const app = getCbApp();
-  if (!app) {
-    // SDK 未加载时降级到 HTTP 直连
-    const url = `https://${CB_ENV}.service.tcloudbase.com/api?action=${action}&from=${params.from}&to=${params.to}`;
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('API ' + resp.status);
-    return resp.json();
-  }
-  const result = await app.callFunction({ name: 'api', data: { action, ...params } });
-  return result.result;
-}
-
-// ── A股: 东方财富财报 ──
-async function fetchCnEarnings(from, to) {
-  try { return await callCloudFunction('earnings', { from, to }); }
-  catch (e) { console.warn('A股财报:', e.message); return []; }
-}
-
-// ── A股: 东方财富业绩预告 ──
-async function fetchCnForecast(from, to) {
-  try { return await callCloudFunction('forecast', { from, to }); }
-  catch (_) { return []; }
-}
-
-// ── 美股: Finnhub ──
-async function fetchUsEarnings(from, to) {
-  try { return await callCloudFunction('us', { from, to }); }
-  catch (e) { console.warn('美股财报:', e.message); return []; }
-}
+async function fetchCnEarnings(from, to) { return []; }
+async function fetchCnForecast(from, to) { return []; }
+async function fetchUsEarnings(from, to) { return []; }
 
   // ── 东方财富 → 事件（A股财报，自带中文名） ──
   function mapCnToEvents(raw, existingEvents) {
